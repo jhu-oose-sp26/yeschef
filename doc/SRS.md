@@ -37,8 +37,8 @@ We will build a recipe app that allows users to search and rate recipes from tru
 - The app should operate smoothly (no lagging webpages)
 
 ## Software Architecture & Technology Stack
-- **Frontend:** React Native, JavaScript/TypeScript
-- **Backend:** Spring boot, Java
+- **Frontend:** React Native, JavaScript/TypeScript (Expo)
+- **Backend:** Spring boot, Java (Maven)
 - **Database + Auth:** Supabase
 
 ## Similar Apps
