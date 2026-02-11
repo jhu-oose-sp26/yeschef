@@ -1,0 +1,24 @@
+# ===== Node / Expo =====
+node_modules/
+frontend/node_modules/
+frontend/.expo/
+frontend/dist/
+
+# ===== Maven / Spring =====
+backend/target/
+
+# ===== Environment files =====
+.env
+.env.local
+frontend/.env
+backend/.env
+application-local.properties
+application-local.yml
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE files =====
+.idea/
+.vscode/
