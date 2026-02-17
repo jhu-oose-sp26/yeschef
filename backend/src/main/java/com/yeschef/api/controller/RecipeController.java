@@ -34,7 +34,7 @@ public class RecipeController {
         // Take the Recipe from the request body, save it to the database, and return the saved version.
         Recipe savedRecipe = recipeRepository.save(recipe);
         return ResponseEntity.ok(savedRecipe);
-    }
+    } //will double check that these correctly reflect in db once added in supabase
 
     // Handles DELETE requests to /recipes/{id}
     @DeleteMapping("/{id}")
@@ -51,6 +51,6 @@ public class RecipeController {
 
         // Return 204 No Content to indicate the delete succeeded  and there is no response body to send back.
         return ResponseEntity.noContent().build();
-    }
+    } //will double check that these correctly reflect in db once added in supabase
 }
 
