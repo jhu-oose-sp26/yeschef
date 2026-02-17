@@ -2,6 +2,7 @@ package com.yeschef.api.model;
 
 import jakarta.persistence.*;
 import java.util.List;
+
 // import org.hibernate.annotations.JdbcTypeCode;
 // import org.hibernate.type.SqlTypes;
 
@@ -23,4 +24,8 @@ public class Recipe {
     // one recipe has many ratings
     @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its ratings
     private List<Rating> ratings;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "instruction_id")
+    private Instruct instruction;
 }
