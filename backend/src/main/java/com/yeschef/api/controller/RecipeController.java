@@ -3,9 +3,12 @@ package com.yeschef.api.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.yeschef.api.model.Recipe;
 import com.yeschef.api.repository.RecipeRepository;
 
 // This controller exposes REST endpoints related to recipes.
@@ -23,6 +26,15 @@ public class RecipeController {
     }
 
 
+
+    // Handles POST requests to /recipes
+    // Expects a Recipe JSON in the request body, converts it to a Recipe entity, saves it to the database, and returns the saved Recipe.
+    @PostMapping
+    public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe) {
+        // Take the Recipe from the request body, save it to the database, and return the saved version.
+        Recipe savedRecipe = recipeRepository.save(recipe);
+        return ResponseEntity.ok(savedRecipe);
+    }
 
     // Handles DELETE requests to /recipes/{id}
     @DeleteMapping("/{id}")
