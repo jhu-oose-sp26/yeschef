@@ -28,4 +28,11 @@ public class Recipe {
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "instruction_id")
     private Instruct instruction;
+
+    @ElementCollection
+    // creating a separate table to store ingredients
+    @CollectionTable(name = "ingredients",joinColumns = @JoinColumn(name = "recipe_id"))
+    // ingredients table has two columns, recipe_id and ingredient
+    @Column(name = "ingredient", nullable = false)
+    private List<String> ingredients;
 }
