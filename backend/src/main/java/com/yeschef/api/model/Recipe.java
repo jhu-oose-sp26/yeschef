@@ -1,7 +1,7 @@
 package com.yeschef.api.model;
 
 import jakarta.persistence.*;
-// import java.util.List;
+import java.util.List;
 // import org.hibernate.annotations.JdbcTypeCode;
 // import org.hibernate.type.SqlTypes;
 
@@ -19,4 +19,8 @@ public class Recipe {
     @ManyToOne // because many recipes can point to the same source
     @JoinColumn(name = "source_id") // tells Hibernate to create a foreign key column
     private RecipeSource source;
+
+    // one recipe has many ratings
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its ratings
+    private List<Rating> ratings;
 }
