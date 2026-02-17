@@ -15,4 +15,8 @@ public class Recipe {
 
     @Column(nullable = false) // this column cannot be null
     private String title;
+
+    @ManyToOne // because many recipes can point to the same source
+    @JoinColumn(name = "source_id") // tells Hibernate to create a foreign key column
+    private RecipeSource source;
 }
