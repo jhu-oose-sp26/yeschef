@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -42,8 +43,8 @@ class ApiApplicationTests {
 	* - DELETE /recipes/{id} (RecipeController.deleteRecipe)
 	*/
 
-	// This test-only Jackson configuration lets MockMvc read/write entity fields directly.
-	// It avoids changing production code while entities still rely on private fields only.
+	// This test-only Jackson configuration lets MockMvc read/write entity fields directly
+	// It avoids changing production code while entities still rely on private fields only
 	@TestConfiguration
 	static class TestJacksonConfig {
 		@Bean
@@ -53,7 +54,7 @@ class ApiApplicationTests {
 	}
 
 	// Test security config keeps authentication + CSRF enabled, but uses HTTP Basic semantics
-	// so unauthenticated requests return 401 instead of redirecting to a login page.
+	// so unauthenticated requests return 401 instead of redirecting to a login page
 	@TestConfiguration
 	static class TestSecurityConfig {
 		@Bean
@@ -71,7 +72,7 @@ class ApiApplicationTests {
 	private MockMvc mockMvc;
 
 	// We mock the repository so controller tests stay focused on request handling,
-	// security behavior, and JSON responses without depending on database state.
+	// security behavior, and JSON responses without depending on database state
 	@MockBean
 	private RecipeRepository recipeRepository;
 
@@ -150,7 +151,7 @@ class ApiApplicationTests {
 
 	@Test
 	void deleteRecipe_requiresAuthentication() throws Exception {
-		// Unauthenticated requests should be rejected with 401 in this MVC slice security setup.
+		// If the user is not authenticated, the request should return 401 Unauthorized
 		mockMvc.perform(
 				delete("/recipes/{id}", 1L)
 					.with(csrf()))
@@ -158,8 +159,8 @@ class ApiApplicationTests {
 	}
 
 	private static String validRecipeJson() {
-		// Ratings are intentionally omitted because Rating.recipe is non-nullable
-		// and would require back-reference wiring in the payload/model handling.
+		// Ratings are left out for now because the Rating entity requires a linked Recipe,
+		// which would need additional back-reference setup in the request payload
 		return """
 			{
 			"title": "Test Recipe",
