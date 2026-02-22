@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 
 
 @Entity
-@Table(name ="INSTRUCTION")
+@Table(name ="instruction")
 public class Instruct {
 
     @Id // this is the primary ID
