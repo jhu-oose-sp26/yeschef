@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
@@ -43,11 +44,29 @@ public class RecipeController {
         }
     }
 
+    // Handle GET requests returning JSON of all recipes in database
     @GetMapping
     public ResponseEntity<List<Recipe>> getAllRecipes() {
         // call repo to return all recipes from database and return
         List<Recipe> recipes = recipeRepository.findAll();
         return ResponseEntity.ok(recipes);
+    }
+
+    // Handle GET requests allowing for filtering by ingredient
+    @GetMapping("/by-ingredient")
+    public ResponseEntity<List<Recipe>> getByIngredient (@RequestParam String ingredient) {
+        // call db query from the recipe repo and return list
+        List<Recipe> recipesFiltered = recipeRepository.findByIngredient(ingredient);
+        return ResponseEntity.ok(recipesFiltered);
+    }
+
+    // Handle GET requests allowing for filtering by time
+    // Done by summing the prep and cook time for a given recipe
+    @GetMapping("/by-time")
+    public ResponseEntity<List<Recipe>> getByTime(@RequestParam String maxTime) {
+        int time = Integer.parseInt(maxTime);
+        List<Recipe> recipesFiltered = recipeRepository.findByMaxTotalTime(time);
+        return ResponseEntity.ok(recipesFiltered);
     }
 
     // Handles POST requests to /recipes
