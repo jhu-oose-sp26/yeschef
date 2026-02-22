@@ -3,7 +3,7 @@ package com.yeschef.api.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name ="RECIPE_SOURCE")
+@Table(name ="recipe_source")
 public class RecipeSource {
     
     @Id // this is the primary ID
