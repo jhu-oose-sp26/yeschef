@@ -25,8 +25,6 @@ public class RecipeController {
         this.recipeRepository = recipeRepository;
     }
 
-
-
     // Handles POST requests to /recipes
     // Expects a Recipe JSON in the request body, converts it to a Recipe entity, saves it to the database, and returns the saved Recipe.
     @PostMapping
