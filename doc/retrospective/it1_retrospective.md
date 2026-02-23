@@ -1,0 +1,8 @@
+For iteration 1, we set out to complete the following objectives:
+- set up the project scaffolding using Maven and SpringBoot in Java, and Supabase for the database
+- implement all user stories for the CRUD operations for recipes
+- set up the necessary relational tables for the chosen user stories
+
+While completing iteration 1, we ran into several issues which will need to be addressed in future iterations.
+- Security: There is an ongoing issue between our code and Supabase. While we can read data from the database, we are currently unable to post to the database due to varying error messages. Thus, we are currently testing all of the written operations through PostMan/Curl. After disabling all security measures on the Supabase database for testing purposes, we are now facing an "internal server error". Ideally, this issue will be resolved by iteration 2 as it forms the basis of our work. 
+- Database design: We had originally constructed a barebones database in order to implement the CRUD operations within the time constraints, assuming that the tables could be refined later as the functions scale in complexity. Once the CRUD operations had been implemented, however, a deeper analysis of the current database design revealed several key optimizations that could be made. We decided not to update the current database design for iteration 1 since the API requests depended on the current setup. In iteration 2, we will udpate and refine the database design and edit the corresponding API requests. Going forward, we will throughly refine the database design before writing code so as to avoid errors propagating upwards. 
