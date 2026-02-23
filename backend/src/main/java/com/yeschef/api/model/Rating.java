@@ -3,7 +3,7 @@ package com.yeschef.api.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name ="RATING")
+@Table(name ="ratings")
 public class Rating {
     
     @Id // this is the primary ID
