@@ -31,6 +31,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.Arrays;
+import java.util.Optional;
+
 import org.springframework.security.config.Customizer;
 
 @WebMvcTest(controllers = RecipeController.class)
@@ -157,6 +160,100 @@ class ApiApplicationTests {
 					.with(csrf()))
 			.andExpect(status().isUnauthorized());
 	}
+
+	@Test
+    void getRecipe_returnsRecipe_whenRecipeExists() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(1L);
+        recipe.setTitle("Test Recipe");
+        
+        when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
+
+        mockMvc.perform(get("/recipes/{id}", 1L).with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1L))
+            .andExpect(jsonPath("$.title").value("Test Recipe"));
+    }
+
+    @Test
+    void getRecipe_returnsNotFound_whenRecipeDoesNotExist() throws Exception {
+        when(recipeRepository.findById(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/recipes/{id}", 999L).with(user("testuser").roles("USER")))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getAllRecipes_returnsAllRecipes() throws Exception {
+        Recipe recipe1 = new Recipe();
+        recipe1.setId(1L);
+        recipe1.setTitle("Recipe 1");
+        Recipe recipe2 = new Recipe();
+        recipe2.setId(2L);
+        recipe2.setTitle("Recipe 2");
+        
+        when(recipeRepository.findAll()).thenReturn(Arrays.asList(recipe1, recipe2));
+
+        mockMvc.perform(get("/recipes").with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(1L))
+            .andExpect(jsonPath("$[0].title").value("Recipe 1"))
+            .andExpect(jsonPath("$[1].id").value(2L))
+            .andExpect(jsonPath("$[1].title").value("Recipe 2"));
+    }
+
+    @Test
+    void getByIngredient_returnsFilteredRecipes() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(1L);
+        recipe.setTitle("Flour-based Recipe");
+        
+        when(recipeRepository.findByIngredient("flour")).thenReturn(Arrays.asList(recipe));
+
+        mockMvc.perform(get("/recipes/by-ingredient")
+                .param("ingredient", "flour").with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(1L))
+            .andExpect(jsonPath("$[0].title").value("Flour-based Recipe"));
+    }
+
+    @Test
+    void getByIngredients_returnsFilteredRecipes() throws Exception {
+        Recipe recipe1 = new Recipe();
+        recipe1.setId(1L);
+        recipe1.setTitle("Flour Recipe");
+        
+        Recipe recipe2 = new Recipe();
+        recipe2.setId(2L);
+        recipe2.setTitle("Sugar Recipe");
+
+        when(recipeRepository.findByIngredient("flour")).thenReturn(Arrays.asList(recipe1));
+        when(recipeRepository.findByIngredient("sugar")).thenReturn(Arrays.asList(recipe2));
+
+        mockMvc.perform(get("/recipes/by-ingredients")
+                .param("ingredientList", "flour")
+                .param("ingredientList", "sugar").with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(1L))
+            .andExpect(jsonPath("$[0].title").value("Flour Recipe"))
+            .andExpect(jsonPath("$[1].id").value(2L))
+            .andExpect(jsonPath("$[1].title").value("Sugar Recipe"));
+    }
+
+    @Test
+    void getByTime_returnsRecipesFilteredByMaxTime() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(1L);
+        recipe.setTitle("Quick Recipe");
+        
+        when(recipeRepository.findByMaxTotalTime(30)).thenReturn(Arrays.asList(recipe));
+
+        mockMvc.perform(get("/recipes/by-time")
+                .param("maxTime", "30").with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(1L))
+            .andExpect(jsonPath("$[0].title").value("Quick Recipe"));
+    }
 
 	private static String validRecipeJson() {
 		// Ratings are left out for now because the Rating entity requires a linked Recipe,
