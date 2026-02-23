@@ -158,6 +158,68 @@ class ApiApplicationTests {
 			.andExpect(status().isUnauthorized());
 	}
 
+	@Test
+	void updateRecipe_returnsOkAndUpdatedBody_whenRecipeExists() throws Exception {
+		Recipe existing = new Recipe();
+		ReflectionTestUtils.setField(existing, "id", 1L);
+		ReflectionTestUtils.setField(existing, "title", "Old Title");
+
+		when(recipeRepository.findById(1L)).thenReturn(java.util.Optional.of(existing));
+		when(recipeRepository.save(any(Recipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		mockMvc.perform(
+				put("/recipes/{id}", 1L)
+					.with(user("testuser").roles("USER"))
+					.with(csrf())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(validRecipeJson()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(1))
+			.andExpect(jsonPath("$.title").value("Test Recipe"))
+			.andExpect(jsonPath("$.instruction.prepTime").value(10))
+			.andExpect(jsonPath("$.instruction.cookTime").value(25))
+			.andExpect(jsonPath("$.ingredients[0]").value("2 cups flour"));
+
+		verify(recipeRepository, times(1)).findById(1L);
+		verify(recipeRepository, times(1)).save(any(Recipe.class));
+	}
+
+	@Test
+	void updateRecipe_returnsNotFound_whenRecipeDoesNotExist() throws Exception {
+		when(recipeRepository.findById(999L)).thenReturn(java.util.Optional.empty());
+
+		mockMvc.perform(
+				put("/recipes/{id}", 999L)
+					.with(user("testuser").roles("USER"))
+					.with(csrf())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(validRecipeJson()))
+			.andExpect(status().isNotFound());
+
+		verify(recipeRepository, times(1)).findById(999L);
+		verify(recipeRepository, times(0)).save(any(Recipe.class));
+	}
+
+	@Test
+	void updateRecipe_returnsForbidden_withoutCsrf() throws Exception {
+		mockMvc.perform(
+				put("/recipes/{id}", 1L)
+					.with(user("testuser").roles("USER"))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(validRecipeJson()))
+			.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void updateRecipe_requiresAuthentication() throws Exception {
+		mockMvc.perform(
+				put("/recipes/{id}", 1L)
+					.with(csrf())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(validRecipeJson()))
+			.andExpect(status().isUnauthorized());
+	}
+
 	private static String validRecipeJson() {
 		// Ratings are left out for now because the Rating entity requires a linked Recipe,
 		// which would need additional back-reference setup in the request payload

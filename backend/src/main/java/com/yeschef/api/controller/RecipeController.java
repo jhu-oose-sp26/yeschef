@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -77,6 +78,26 @@ public class RecipeController {
         Recipe savedRecipe = recipeRepository.save(recipe);
         return ResponseEntity.ok(savedRecipe);
     } //will double check that these correctly reflect in db once added in supabase
+
+    // Handles PUT requests to /recipes/{id}
+    // Updates an existing recipe's title, source, instruction, and ingredients.
+    // Ratings are managed separately and are not overwritten here.
+    @PutMapping("/{id}")
+    public ResponseEntity<Recipe> updateRecipe(@PathVariable Long id, @RequestBody Recipe updatedRecipe) {
+        Optional<Recipe> recipeMaybe = recipeRepository.findById(id);
+        if (recipeMaybe.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Recipe existing = recipeMaybe.get();
+        existing.setTitle(updatedRecipe.getTitle());
+        existing.setSource(updatedRecipe.getSource());
+        existing.setInstruction(updatedRecipe.getInstruction());
+        existing.setIngredients(updatedRecipe.getIngredients());
+
+        Recipe saved = recipeRepository.save(existing);
+        return ResponseEntity.ok(saved);
+    }
 
     // Handles DELETE requests to /recipes/{id}
     @DeleteMapping("/{id}")
