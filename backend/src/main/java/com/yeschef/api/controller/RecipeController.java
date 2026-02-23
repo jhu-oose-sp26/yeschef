@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.yeschef.api.model.Recipe;
@@ -59,6 +60,18 @@ public class RecipeController {
         // call db query from the recipe repo and return list
         List<Recipe> recipesFiltered = recipeRepository.findByIngredient(ingredient);
         return ResponseEntity.ok(recipesFiltered);
+    }
+
+    // Handle GET requests allowing for filtering by ingredients
+    @GetMapping("/by-ingredients")
+    public ResponseEntity<List<Recipe>> getByIngredients (@RequestParam List<String> ingredientList) {
+        // call db query from the recipe repo and return list
+        List<Recipe> allFilteredRecipes = new ArrayList<Recipe>();
+        for (String ingredient : ingredientList) {
+            List<Recipe> recipesFiltered = recipeRepository.findByIngredient(ingredient);
+            allFilteredRecipes.addAll(recipesFiltered);
+        }
+        return ResponseEntity.ok(allFilteredRecipes);
     }
 
     // Handle GET requests allowing for filtering by time
