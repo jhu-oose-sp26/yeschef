@@ -28,8 +28,7 @@ public class Recipe {
     @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its ratings
     private List<Rating> ratings;
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "instruction_id")
+    @OneToOne(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Instruct instruction;
 

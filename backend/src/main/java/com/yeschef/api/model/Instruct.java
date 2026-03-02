@@ -3,6 +3,8 @@ package com.yeschef.api.model;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 
 
@@ -19,6 +21,11 @@ public class Instruct {
 
     @Column(nullable = false) 
     private int cookTime;
+
+    @OneToOne
+    @JoinColumn(name = "recipe_id", nullable = false, unique = true)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Recipe recipe;
 
     @ElementCollection // tells JPA that this is collection of basic values
     // creates a separate table called "instruction_steps" to store the map entries
