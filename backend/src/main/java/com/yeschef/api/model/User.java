@@ -18,12 +18,12 @@ public class User{
     @OneToMany(mappedBy = "user") // this side does not own relationship. FK lives in RecipeSource entity in its field called user
     private List<RecipeSource> recipeSources;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true) 
     private List<HasLiked> likes;    
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HasSaved> saves;    
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Rating> ratings;   
 }
