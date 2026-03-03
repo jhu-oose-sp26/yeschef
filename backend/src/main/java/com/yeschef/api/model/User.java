@@ -19,8 +19,11 @@ public class User{
     private List<RecipeSource> recipeSources;
 
     @OneToMany(mappedBy = "user")
-    private List<HasLiked> hasLiked;    
+    private List<HasLiked> likes;    
 
     @OneToMany(mappedBy = "user")
-    private List<HasSaved> hasSaved;    
+    private List<HasSaved> saves;    
+
+    @OneToMany(mappedBy = "user")
+    private List<Rating> ratings;   
 }
