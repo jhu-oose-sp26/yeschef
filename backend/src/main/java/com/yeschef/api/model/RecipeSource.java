@@ -19,6 +19,10 @@ public class RecipeSource {
     @Column(name="source_type", nullable=false)
     private SourceType sourceType;
 
-    @Column(nullable = true)
+    @Column
     private String api_url;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id") // create a column called user_id in table and it holds FK to referenced entity's PK
+    private User user;
 }

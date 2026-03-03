@@ -32,6 +32,14 @@ public class Recipe {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Instruct instruction;
 
+    // one recipe can have many likes
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its likes
+    private List<HasLiked> hasLiked;
+
+    // one recipe can have many saves
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its likes
+    private List<HasSaved> hasSaved;
+
     // child Ingredient object
     @Embeddable
     public static class Ingredient {
@@ -66,6 +74,8 @@ public class Recipe {
     public RecipeSource getSource() { return source; }
     public List<Rating> getRatings() { return ratings; }
     public Instruct getInstruction() { return instruction; }
+    public List<HasLiked> getLikes() { return hasLiked; }
+    public List<HasSaved> getSaves() { return hasSaved; }
     public List<Ingredient> getIngredients() { return ingredients; }
 
     public void setId(Long id) { this.id = id; }
@@ -73,5 +83,7 @@ public class Recipe {
     public void setSource(RecipeSource source) { this.source = source; }
     public void setRatings(List<Rating> ratings) { this.ratings = ratings; }
     public void setInstruction(Instruct instruction) { this.instruction = instruction; }
+    public void setLikes(List<HasLiked> likes) { this.hasLiked = likes;}
+    public void setSaves(List<HasSaved> saves) { this.hasSaved = saves;}
     public void setIngredients(List<Ingredient> ingredients) { this.ingredients = ingredients; }
 }
