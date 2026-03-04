@@ -20,7 +20,7 @@ public class Recipe {
     private String title;
 
     @ManyToOne // because many recipes can point to the same source
-    @JoinColumn(name = "source_id") // tells Hibernate to create a foreign key column
+    @JoinColumn(name = "source_id", nullable=false) // tells Hibernate to create a foreign key column
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private RecipeSource source;
 
@@ -28,17 +28,45 @@ public class Recipe {
     @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its ratings
     private List<Rating> ratings;
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "instruction_id")
+    @OneToOne(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Instruct instruction;
 
+    // one recipe can have many likes
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its likes
+    private List<HasLiked> likes;
+
+    // one recipe can have many saves
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its likes
+    private List<HasSaved> saves;
+
+    // child Ingredient object
+    @Embeddable
+    public static class Ingredient {
+        @Column(name = "ingredient", nullable = false)
+        private String ingredient;
+
+        @Column(name = "quantity", nullable = true)
+        private String quantity;
+
+        public Ingredient() {}
+
+        public Ingredient(String ingredient, String quantity) {
+            this.ingredient = ingredient;
+            this.quantity = quantity;
+        }
+        public String getIngredient() { return ingredient; }
+        public String getQuantity() { return quantity; }
+
+        public void setIngredient(String ingredient) { this.ingredient = ingredient; }
+        public void setQuantity(String quantity) { this.quantity = quantity; }
+        
+    }
+    
     @ElementCollection
-    // creating a separate table to store ingredients
-    @CollectionTable(name = "ingredients",joinColumns = @JoinColumn(name = "recipe_id"))
-    // ingredients table has two columns, recipe_id and ingredient
-    @Column(name = "ingredient", nullable = false)
-    private List<String> ingredients;
+    @CollectionTable(name = "ingredients", joinColumns = @JoinColumn(name="recipe_id", nullable=false))
+    @OrderColumn(name="line_number")
+    private List<Ingredient> ingredients;
 
 
     public Long getId() { return id; }
@@ -46,12 +74,16 @@ public class Recipe {
     public RecipeSource getSource() { return source; }
     public List<Rating> getRatings() { return ratings; }
     public Instruct getInstruction() { return instruction; }
-    public List<String> getIngredients() { return ingredients; }
+    public List<HasLiked> getLikes() { return likes; }
+    public List<HasSaved> getSaves() { return saves; }
+    public List<Ingredient> getIngredients() { return ingredients; }
 
     public void setId(Long id) { this.id = id; }
     public void setTitle(String title) { this.title = title; }
     public void setSource(RecipeSource source) { this.source = source; }
     public void setRatings(List<Rating> ratings) { this.ratings = ratings; }
     public void setInstruction(Instruct instruction) { this.instruction = instruction; }
-    public void setIngredients(List<String> ingredients) { this.ingredients = ingredients; }
+    public void setLikes(List<HasLiked> likes) { this.likes = likes;}
+    public void setSaves(List<HasSaved> saves) { this.saves = saves;}
+    public void setIngredients(List<Ingredient> ingredients) { this.ingredients = ingredients; }
 }

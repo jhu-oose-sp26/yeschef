@@ -3,7 +3,10 @@ package com.yeschef.api.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name ="ratings")
+@Table(
+    name ="ratings",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "recipe_id"})
+)
 public class Rating {
     
     @Id // this is the primary ID
@@ -13,6 +16,10 @@ public class Rating {
     @ManyToOne // many ratings to one recipe
     @JoinColumn(name = "recipe_id", nullable=false)
     private Recipe recipe;
+
+    @ManyToOne // many ratings to one user
+    @JoinColumn(name = "user_id", nullable=false)
+    private User user;
 
     @Column(nullable = false) // this column cannot be null
     private int tasteQuality;
