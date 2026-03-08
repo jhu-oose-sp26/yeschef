@@ -12,11 +12,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.yeschef.api.DTO.RecipeResponseDTO;
+import com.yeschef.api.DTO.RecipeRequestDTO;
+import com.yeschef.api.DTO.InstructionDTO.InstructionStepDTO;
+import com.yeschef.api.model.Instruct;
 import com.yeschef.api.model.Recipe;
+import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.repository.RecipeRepository;
+import com.yeschef.api.repository.RecipeSourceRepository;
 
 // This controller exposes REST endpoints related to recipes.
 @RestController
@@ -26,21 +33,97 @@ public class RecipeController {
     // Spring injects an implementation of RecipeRepository at runtime.
     // We use this to talk to the database for Recipe entities.
     private final RecipeRepository recipeRepository;
+    private final RecipeSourceRepository sourceRepository;
 
     // Constructor-based dependency injection tells Spring how to provide the repository.
-    public RecipeController(RecipeRepository recipeRepository) {
+    public RecipeController(RecipeRepository recipeRepository, RecipeSourceRepository sourceRepository) {
         this.recipeRepository = recipeRepository;
+        this.sourceRepository = sourceRepository;
+    }
+
+    // convert recipe object to dto:
+    private RecipeResponseDTO toDTO(Recipe recipe) {
+
+        List<RecipeResponseDTO.IngredientDTO> ingredients =
+        recipe.getIngredients()
+            .stream()
+            .map(i -> new RecipeResponseDTO.IngredientDTO(
+                    i.getIngredient(),
+                    i.getQuantity()))
+            .collect(Collectors.toList());
+
+        List<InstructionStepDTO> steps =
+            recipe.getInstruction()
+                    .getSteps()
+                    .stream()
+                    .map(s -> new InstructionStepDTO(
+                            s.getStepNumber(),
+                            s.getStepDescription()))
+                    .collect(Collectors.toList());
+
+        return new RecipeResponseDTO(
+            recipe.getId(),
+            recipe.getTitle(),
+            recipe.getSource().getSourceType().toString(),
+            recipe.getInstruction().getPrepTime(),
+            recipe.getInstruction().getCookTime(),
+            ingredients,
+            steps);
+        }
+
+    // convert dto to recipe
+    private Recipe toEntity(RecipeRequestDTO dto) {
+
+        Recipe recipe = new Recipe();
+        recipe.setTitle(dto.getTitle());
+
+        RecipeSource source = new RecipeSource();
+        source.setSourceTypeFromString(dto.getSourceType());
+        RecipeSource savedSource = sourceRepository.save(source);
+        source = sourceRepository.save(savedSource); // persist to generate database id
+
+
+        recipe.setSource(source);
+
+        List<Recipe.Ingredient> ingredients =
+                dto.getIngredients()
+                        .stream()
+                        .map(i -> new Recipe.Ingredient(
+                                i.getIngredient(),
+                                i.getQuantity()))
+                        .collect(Collectors.toList());
+
+        recipe.setIngredients(ingredients);
+
+        Instruct instruct = new Instruct();
+        instruct.setPrepTime(dto.getPrepTime());
+        instruct.setCookTime(dto.getCookTime());
+        instruct.setRecipe(recipe);
+
+        List<Instruct.InstructionStep> steps =
+                dto.getSteps()
+                        .stream()
+                        .map(s -> new Instruct.InstructionStep(
+                                s.getStepNumber(),
+                                s.getStepDescription()))
+                        .collect(Collectors.toList());
+
+        instruct.setSteps(steps);
+
+        recipe.setInstruction(instruct);
+
+        return recipe;
     }
 
     // Handle GET requests to /recipes
     // Return one recipe by id
     @GetMapping("/{id}")
-    public ResponseEntity<Recipe> getRecipe(@PathVariable Long id) {
+    public ResponseEntity<RecipeResponseDTO> getRecipe(@PathVariable Long id) {
         // call repo to find recipe by id
         Optional<Recipe> recipeMaybe = recipeRepository.findById(id);
         // return recipe or null if not found
         if (recipeMaybe.isPresent()) {
-            return ResponseEntity.ok(recipeMaybe.get());
+            return ResponseEntity.ok(toDTO(recipeMaybe.get()));
         } else {
             return ResponseEntity.notFound().build();
         }
@@ -53,6 +136,20 @@ public class RecipeController {
         List<Recipe> recipes = recipeRepository.findAll();
         return ResponseEntity.ok(recipes);
     }
+
+    /* 
+    @GetMapping
+    public ResponseEntity<List<RecipeResponseDTO>> getAllRecipes() {
+
+        List<RecipeResponseDTO> recipes =
+            recipeRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(recipes);
+    }
+    */
 
     // Handle GET requests allowing for filtering by ingredient
     @GetMapping("/by-ingredient")
@@ -85,12 +182,25 @@ public class RecipeController {
 
     // Handles POST requests to /recipes
     // Expects a Recipe JSON in the request body, converts it to a Recipe entity, saves it to the database, and returns the saved Recipe.
+    /*
     @PostMapping
     public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe) {
         // Take the Recipe from the request body, save it to the database, and return the saved version.
         Recipe savedRecipe = recipeRepository.save(recipe);
         return ResponseEntity.ok(savedRecipe);
     } //will double check that these correctly reflect in db once added in supabase
+*/
+
+    @PostMapping
+    public ResponseEntity<RecipeResponseDTO> createRecipe(
+        @RequestBody RecipeRequestDTO dto) {
+
+        Recipe recipe = toEntity(dto);
+
+        Recipe saved = recipeRepository.save(recipe);
+
+        return ResponseEntity.ok(toDTO(saved));
+    }
 
     // Handles PUT requests to /recipes/{id}
     // Updates an existing recipe's title, source, instruction, and ingredients.
@@ -111,6 +221,58 @@ public class RecipeController {
         Recipe saved = recipeRepository.save(existing);
         return ResponseEntity.ok(saved);
     }
+    /*
+   @PutMapping("/{id}")
+    public ResponseEntity<RecipeResponseDTO> updateRecipe(
+        @PathVariable Long id,
+        @RequestBody RecipeRequestDTO dto) {
+
+        Optional<Recipe> recipeMaybe = recipeRepository.findById(id);
+
+        if (recipeMaybe.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Recipe recipe = recipeMaybe.get();
+
+        recipe.setTitle(dto.getTitle());
+
+        RecipeSource source =
+            sourceRepository.findById(dto.getSourceId())
+                .orElseThrow();
+
+        recipe.setSource(source);
+
+        List<Recipe.Ingredient> ingredients =
+            dto.getIngredients()
+                .stream()
+                .map(i -> new Recipe.Ingredient(
+                        i.getIngredient(),
+                        i.getQuantity()))
+                .toList();
+
+        recipe.setIngredients(ingredients);
+
+        Instruct instruct = recipe.getInstruction();
+
+        instruct.setPrepTime(dto.getPrepTime());
+        instruct.setCookTime(dto.getCookTime());
+
+        List<Instruct.InstructionStep> steps =
+            dto.getSteps()
+                .stream()
+                .map(s -> new Instruct.InstructionStep(
+                        s.getStepNumber(),
+                        s.getStepDescription()))
+                .toList();
+
+        instruct.setSteps(steps);
+
+        Recipe saved = recipeRepository.save(recipe);
+
+        return ResponseEntity.ok(toDTO(saved));
+    }
+    */
 
     // Handles DELETE requests to /recipes/{id}
     @DeleteMapping("/{id}")

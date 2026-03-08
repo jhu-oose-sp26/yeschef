@@ -89,6 +89,34 @@ class ApiApplicationTests {
 	}
 
 	@Test
+    void testCreateRecipe() throws Exception {
+        String recipeJson = """
+        {
+          "title": "Chocolate Cake",
+          "source": "HOME_RECIPE",
+          "prepTime": 20,
+          "cookTime": 30,
+          "ingredients": [
+            { "ingredient": "Flour", "quantity": "2 cups" },
+            { "ingredient": "Sugar", "quantity": "1 cup" },
+			{ "ingredient": "Cocoa Powder", "quantity": "5 tbsp" }
+          ],
+          "steps": [
+            { "stepNumber": 1, "stepDescription": "Mix dry ingredients." },
+            { "stepNumber": 2, "stepDescription": "Add wet ingredients." }
+          ]
+        }
+        """;
+
+        mockMvc.perform(post("/recipes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(recipeJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Chocolate Cake"))
+                .andExpect(jsonPath("$.ingredients[0].ingredient").value("Flour"));
+    }
+
+	@Test
 	void createRecipe_returnsOkAndBody_whenAuthenticatedWithCsrf() throws Exception {
 		when(recipeRepository.save(any(Recipe.class))).thenAnswer(invocation -> {
 			Recipe recipe = invocation.getArgument(0, Recipe.class);
