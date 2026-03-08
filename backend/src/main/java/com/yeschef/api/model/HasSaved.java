@@ -1,6 +1,13 @@
 package com.yeschef.api.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
@@ -20,4 +27,13 @@ public class HasSaved{
     @ManyToOne
     @JoinColumn(name = "recipe_id", nullable = false)
     private Recipe recipe;
+
+    // getters and setters
+    public Long getId() { return id; }
+    public User getUser() { return user; }
+    public Recipe getRecipe() { return recipe; }
+
+    public void setId(Long id) { this.id = id; }
+    public void setUser(User user) { this.user = user; }
+    public void setRecipe(Recipe recipe) { this.recipe = recipe; }
 }
