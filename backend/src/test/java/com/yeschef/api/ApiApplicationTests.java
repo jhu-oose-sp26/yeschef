@@ -37,7 +37,10 @@ import java.util.Optional;
 import org.springframework.security.config.Customizer;
 
 @WebMvcTest(controllers = RecipeController.class)
-@Import(ApiApplicationTests.TestJacksonConfig.class)
+@Import({
+    ApiApplicationTests.TestJacksonConfig.class,
+    ApiApplicationTests.TestSecurityConfig.class
+})
 class ApiApplicationTests {
 
 	/*

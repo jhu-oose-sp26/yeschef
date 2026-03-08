@@ -44,6 +44,7 @@ public class RecipeController {
     // convert recipe object to dto:
     private RecipeResponseDTO toDTO(Recipe recipe) {
 
+        // stream to get all the ingredients
         List<RecipeResponseDTO.IngredientDTO> ingredients =
         recipe.getIngredients()
             .stream()
@@ -52,6 +53,7 @@ public class RecipeController {
                     i.getQuantity()))
             .collect(Collectors.toList());
 
+        // stream to get all the steps
         List<InstructionStepDTO> steps =
             recipe.getInstruction()
                     .getSteps()
@@ -61,6 +63,7 @@ public class RecipeController {
                             s.getStepDescription()))
                     .collect(Collectors.toList());
 
+        // return a dto object
         return new RecipeResponseDTO(
             recipe.getId(),
             recipe.getTitle(),
@@ -77,14 +80,13 @@ public class RecipeController {
         Recipe recipe = new Recipe();
         recipe.setTitle(dto.getTitle());
 
+        // to generate a database id for the source
         RecipeSource source = new RecipeSource();
         source.setSourceTypeFromString(dto.getSourceType());
-        RecipeSource savedSource = sourceRepository.save(source);
-        source = sourceRepository.save(savedSource); // persist to generate database id
-
-
+        source = sourceRepository.save(source); // persist to generate database id
         recipe.setSource(source);
 
+        // stream for ingredients
         List<Recipe.Ingredient> ingredients =
                 dto.getIngredients()
                         .stream()
@@ -95,11 +97,13 @@ public class RecipeController {
 
         recipe.setIngredients(ingredients);
 
+        // create instructions
         Instruct instruct = new Instruct();
         instruct.setPrepTime(dto.getPrepTime());
         instruct.setCookTime(dto.getCookTime());
         instruct.setRecipe(recipe);
 
+        // stream for isntruction steps
         List<Instruct.InstructionStep> steps =
                 dto.getSteps()
                         .stream()
@@ -131,14 +135,6 @@ public class RecipeController {
 
     // Handle GET requests returning JSON of all recipes in database
     @GetMapping
-    public ResponseEntity<List<Recipe>> getAllRecipes() {
-        // call repo to return all recipes from database and return
-        List<Recipe> recipes = recipeRepository.findAll();
-        return ResponseEntity.ok(recipes);
-    }
-
-    /* 
-    @GetMapping
     public ResponseEntity<List<RecipeResponseDTO>> getAllRecipes() {
 
         List<RecipeResponseDTO> recipes =
@@ -149,7 +145,6 @@ public class RecipeController {
 
         return ResponseEntity.ok(recipes);
     }
-    */
 
     // Handle GET requests allowing for filtering by ingredient
     @GetMapping("/by-ingredient")
@@ -182,21 +177,14 @@ public class RecipeController {
 
     // Handles POST requests to /recipes
     // Expects a Recipe JSON in the request body, converts it to a Recipe entity, saves it to the database, and returns the saved Recipe.
-    /*
-    @PostMapping
-    public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe) {
-        // Take the Recipe from the request body, save it to the database, and return the saved version.
-        Recipe savedRecipe = recipeRepository.save(recipe);
-        return ResponseEntity.ok(savedRecipe);
-    } //will double check that these correctly reflect in db once added in supabase
-*/
-
     @PostMapping
     public ResponseEntity<RecipeResponseDTO> createRecipe(
         @RequestBody RecipeRequestDTO dto) {
 
         Recipe recipe = toEntity(dto);
-
+        RecipeSource source = recipe.getSource();
+        source.setSourceType(RecipeSource.SourceType.valueOf(dto.getSourceType()));
+        // Take the Recipe from the request body, save it to the database, and return the saved version.
         Recipe saved = recipeRepository.save(recipe);
 
         return ResponseEntity.ok(toDTO(saved));

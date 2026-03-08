@@ -63,4 +63,18 @@ public class RecipeSource {
     public void setUser(User user) {
         this.user = user;
     }
+
+    // for dto:
+    public void setSourceTypeFromString(String sourceTypeStr) {
+        if (sourceTypeStr == null) {
+            throw new IllegalArgumentException("sourceType string cannot be null");
+        }
+        try {
+            // convert string to uppercase to match enum names
+            this.sourceType = SourceType.valueOf(sourceTypeStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid sourceType: " + sourceTypeStr + 
+                                            ". Must be one of: API, USER");
+        }
+    }
 }
