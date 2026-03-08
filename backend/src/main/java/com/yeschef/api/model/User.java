@@ -2,7 +2,14 @@ package com.yeschef.api.model;
 
 import java.util.List;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name="users")
@@ -25,5 +32,20 @@ public class User{
     private List<HasSaved> saves;    
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Rating> ratings;   
+    private List<Rating> ratings;
+
+    // getters and setters
+    public Long getId() { return id; }
+    public String getUsername() { return username; }
+    public List<RecipeSource> getRecipeSources() { return recipeSources; }
+    public List<HasLiked> getLikes() { return likes; }
+    public List<HasSaved> getSaves() { return saves; }
+    public List<Rating> getRatings() { return ratings; }
+
+    public void setId(Long id) { this.id = id; }
+    public void setUsername(String username) { this.username = username; }
+    public void setRecipeSources(List<RecipeSource> recipeSources) { this.recipeSources = recipeSources; }
+    public void setLikes(List<HasLiked> likes) { this.likes = likes; }
+    public void setSaves(List<HasSaved> saves) { this.saves = saves; }
+    public void setRatings(List<Rating> ratings) { this.ratings = ratings; }
 }
