@@ -34,3 +34,6 @@ build/
 
 ### HELP.md ### 
 !HELP.md
+
+# Environment secrets
+.env
