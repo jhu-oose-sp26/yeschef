@@ -10,7 +10,8 @@ public class RecipeSource {
 
     public enum SourceType {
         API,
-        USER
+        USER,
+        EXTERNAL_IMPORT
     }
     
     @Id // this is the primary ID
@@ -81,7 +82,7 @@ public class RecipeSource {
             this.sourceType = SourceType.valueOf(sourceTypeStr.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid sourceType: " + sourceTypeStr +
-                                            ". Must be one of: API, USER");
+                                            ". Must be one of: API, USER, EXTERNAL_IMPORT");
         }
     }
 }
