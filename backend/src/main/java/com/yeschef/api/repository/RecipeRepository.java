@@ -30,5 +30,14 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     WHERE LOWER(ing) = LOWER(:ingredient)
     """)
     List<Recipe> findByIngredient(@Param("ingredient") String ingredient);
+
+    @Query("""
+    SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END
+    FROM Recipe r
+    JOIN r.source s
+    WHERE LOWER(r.title) = LOWER(:title)
+      AND s.api_url = :apiUrl
+    """)
+    boolean existsByTitleAndSourceApiUrl(@Param("title") String title, @Param("apiUrl") String apiUrl);
 }
 
