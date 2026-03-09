@@ -55,4 +55,19 @@ public class Instruct {
         uniqueConstraints = @UniqueConstraint(columnNames={"instruction_id","step_number"})
     ) 
     private List<InstructionStep> steps;
+
+    // getters/setters
+    public Long getId() { return id; }
+
+    public int getPrepTime() { return prepTime; }
+    public int getCookTime() { return cookTime; }
+
+    public Recipe getRecipe() { return recipe; }
+    public List<InstructionStep> getSteps() { return steps; }
+
+    public void setPrepTime(int prepTime) { this.prepTime = prepTime; }
+    public void setCookTime(int cookTime) { this.cookTime = cookTime; }
+
+    public void setRecipe(Recipe recipe) { this.recipe = recipe; }
+    public void setSteps(List<InstructionStep> steps) { this.steps = steps; }
 }
