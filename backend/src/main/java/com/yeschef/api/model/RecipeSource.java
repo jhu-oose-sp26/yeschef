@@ -1,5 +1,7 @@
 package com.yeschef.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -24,6 +26,7 @@ public class RecipeSource {
 
     @ManyToOne
     @JoinColumn(name = "user_id") // create a column called user_id in table and it holds FK to referenced entity's PK
+    @JsonIgnore
     private User user;
 
     // constructors
@@ -38,6 +41,10 @@ public class RecipeSource {
     // getters and setters
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public SourceType getSourceType() {
@@ -73,7 +80,7 @@ public class RecipeSource {
             // convert string to uppercase to match enum names
             this.sourceType = SourceType.valueOf(sourceTypeStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid sourceType: " + sourceTypeStr + 
+            throw new IllegalArgumentException("Invalid sourceType: " + sourceTypeStr +
                                             ". Must be one of: API, USER");
         }
     }

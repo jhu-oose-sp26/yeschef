@@ -2,6 +2,7 @@ package com.yeschef.api.model;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.*;
@@ -23,6 +24,7 @@ public class Instruct {
 
     @OneToOne
     @JoinColumn(name = "recipe_id", nullable = false, unique = true)
+    @JsonIgnore
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Recipe recipe;
 
@@ -58,16 +60,13 @@ public class Instruct {
 
     // getters/setters
     public Long getId() { return id; }
-
+    public void setId(Long id) { this.id = id; }
     public int getPrepTime() { return prepTime; }
-    public int getCookTime() { return cookTime; }
-
-    public Recipe getRecipe() { return recipe; }
-    public List<InstructionStep> getSteps() { return steps; }
-
     public void setPrepTime(int prepTime) { this.prepTime = prepTime; }
+    public int getCookTime() { return cookTime; }
     public void setCookTime(int cookTime) { this.cookTime = cookTime; }
-
+    public Recipe getRecipe() { return recipe; }
     public void setRecipe(Recipe recipe) { this.recipe = recipe; }
+    public List<InstructionStep> getSteps() { return steps; }
     public void setSteps(List<InstructionStep> steps) { this.steps = steps; }
 }
