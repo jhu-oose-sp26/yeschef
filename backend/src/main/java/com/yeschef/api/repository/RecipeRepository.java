@@ -2,6 +2,7 @@ package com.yeschef.api.repository;
 
 import java.util.List;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,6 +10,16 @@ import org.springframework.data.repository.query.Param;
 import com.yeschef.api.model.Recipe;
 
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
+
+    /** Load recipes with source, instruction, instruction steps, and ingredients in bulk to avoid N+1 queries. */
+    @Override
+    @EntityGraph(attributePaths = { "source", "instruction", "instruction.steps", "ingredients" })
+    List<Recipe> findAll();
+
+    /** Load a single recipe with all related data to avoid lazy-load queries when serializing. */
+    @Override
+    @EntityGraph(attributePaths = { "source", "instruction", "instruction.steps", "ingredients" })
+    java.util.Optional<Recipe> findById(Long id);
 
     // FILTERING:
     // Query to get the time it takes to make a recipe by summing prep time and cooktime

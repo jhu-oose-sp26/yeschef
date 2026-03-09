@@ -1,5 +1,7 @@
 package com.yeschef.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -22,16 +24,23 @@ public class HasSaved{
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
     @ManyToOne
     @JoinColumn(name = "recipe_id", nullable = false)
+    @JsonIgnore
     private Recipe recipe;
 
     // getters and setters
     public Long getId() { return id; }
     public User getUser() { return user; }
     public Recipe getRecipe() { return recipe; }
+
+    /** Exposed for API responses so clients get recipeId without loading full recipe. */
+    public Long getRecipeId() {
+        return recipe != null ? recipe.getId() : null;
+    }
 
     public void setId(Long id) { this.id = id; }
     public void setUser(User user) { this.user = user; }
