@@ -37,6 +37,11 @@ public class HasSaved{
     public User getUser() { return user; }
     public Recipe getRecipe() { return recipe; }
 
+    /** Exposed for API responses so clients get recipeId without loading full recipe. */
+    public Long getRecipeId() {
+        return recipe != null ? recipe.getId() : null;
+    }
+
     public void setId(Long id) { this.id = id; }
     public void setUser(User user) { this.user = user; }
     public void setRecipe(Recipe recipe) { this.recipe = recipe; }

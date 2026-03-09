@@ -42,7 +42,7 @@ public class HasSavedController {
         if (!userRepository.existsById(userId)) {
             return ResponseEntity.notFound().build();
         }
-        List<HasSaved> saved = hasSavedRepository.findByUserId(userId);
+        List<HasSaved> saved = hasSavedRepository.findByUser_Id(userId);
         return ResponseEntity.ok(saved);
     }
 
@@ -61,7 +61,7 @@ public class HasSavedController {
         }
 
         // Check if the user already saved this recipe
-        Optional<HasSaved> existing = hasSavedRepository.findByUserIdAndRecipeId(userId, recipeId);
+        Optional<HasSaved> existing = hasSavedRepository.findByUser_IdAndRecipe_Id(userId, recipeId);
         if (existing.isPresent()) {
             return ResponseEntity.status(409).build();
         }
@@ -76,7 +76,7 @@ public class HasSavedController {
     // Unsaves a recipe for a user. Returns 404 if the save entry doesn't exist.
     @DeleteMapping("/{recipeId}")
     public ResponseEntity<Void> unsaveRecipe(@PathVariable Long userId, @PathVariable Long recipeId) {
-        Optional<HasSaved> hasSaved = hasSavedRepository.findByUserIdAndRecipeId(userId, recipeId);
+        Optional<HasSaved> hasSaved = hasSavedRepository.findByUser_IdAndRecipe_Id(userId, recipeId);
         if (hasSaved.isEmpty()) {
             return ResponseEntity.notFound().build();
         }

@@ -32,3 +32,15 @@ export interface Recipe {
   likes?: unknown[];
   saves?: unknown[];
 }
+
+/** User from GET /users or GET /users/{id}. */
+export interface User {
+  id: number;
+  username: string;
+}
+
+/** Saved-recipe entry from GET /users/{userId}/saved. */
+export interface HasSaved {
+  id: number;
+  recipeId: number | null;
+}

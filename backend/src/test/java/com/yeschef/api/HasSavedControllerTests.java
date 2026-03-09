@@ -87,7 +87,7 @@ class HasSavedControllerTests {
         hasSaved.setRecipe(recipe);
 
         when(userRepository.existsById(1L)).thenReturn(true);
-        when(hasSavedRepository.findByUserId(1L)).thenReturn(Arrays.asList(hasSaved));
+        when(hasSavedRepository.findByUser_Id(1L)).thenReturn(Arrays.asList(hasSaved));
 
         mockMvc.perform(get("/users/{userId}/saved", 1L).with(user("testuser").roles("USER")))
             .andExpect(status().isOk())
@@ -99,7 +99,7 @@ class HasSavedControllerTests {
     @Test
     void getSavedRecipes_returnsEmptyList_whenUserHasNoSaves() throws Exception {
         when(userRepository.existsById(1L)).thenReturn(true);
-        when(hasSavedRepository.findByUserId(1L)).thenReturn(Arrays.asList());
+        when(hasSavedRepository.findByUser_Id(1L)).thenReturn(Arrays.asList());
 
         mockMvc.perform(get("/users/{userId}/saved", 1L).with(user("testuser").roles("USER")))
             .andExpect(status().isOk())
@@ -113,7 +113,7 @@ class HasSavedControllerTests {
         mockMvc.perform(get("/users/{userId}/saved", 999L).with(user("testuser").roles("USER")))
             .andExpect(status().isNotFound());
 
-        verify(hasSavedRepository, never()).findByUserId(any());
+        verify(hasSavedRepository, never()).findByUser_Id(any());
     }
 
     @Test
@@ -136,7 +136,7 @@ class HasSavedControllerTests {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(recipeRepository.findById(10L)).thenReturn(Optional.of(recipe));
-        when(hasSavedRepository.findByUserIdAndRecipeId(1L, 10L)).thenReturn(Optional.empty());
+        when(hasSavedRepository.findByUser_IdAndRecipe_Id(1L, 10L)).thenReturn(Optional.empty());
         when(hasSavedRepository.save(any(HasSaved.class))).thenAnswer(invocation -> {
             HasSaved hs = invocation.getArgument(0);
             hs.setId(1L);
@@ -168,7 +168,7 @@ class HasSavedControllerTests {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(recipeRepository.findById(10L)).thenReturn(Optional.of(recipe));
-        when(hasSavedRepository.findByUserIdAndRecipeId(1L, 10L)).thenReturn(Optional.of(existing));
+        when(hasSavedRepository.findByUser_IdAndRecipe_Id(1L, 10L)).thenReturn(Optional.of(existing));
 
         mockMvc.perform(
                 post("/users/{userId}/saved/{recipeId}", 1L, 10L)
@@ -240,7 +240,7 @@ class HasSavedControllerTests {
         hasSaved.setUser(user);
         hasSaved.setRecipe(recipe);
 
-        when(hasSavedRepository.findByUserIdAndRecipeId(1L, 10L)).thenReturn(Optional.of(hasSaved));
+        when(hasSavedRepository.findByUser_IdAndRecipe_Id(1L, 10L)).thenReturn(Optional.of(hasSaved));
         doNothing().when(hasSavedRepository).delete(hasSaved);
 
         mockMvc.perform(
@@ -254,7 +254,7 @@ class HasSavedControllerTests {
 
     @Test
     void unsaveRecipe_returnsNotFound_whenSaveDoesNotExist() throws Exception {
-        when(hasSavedRepository.findByUserIdAndRecipeId(1L, 999L)).thenReturn(Optional.empty());
+        when(hasSavedRepository.findByUser_IdAndRecipe_Id(1L, 999L)).thenReturn(Optional.empty());
 
         mockMvc.perform(
                 delete("/users/{userId}/saved/{recipeId}", 1L, 999L)

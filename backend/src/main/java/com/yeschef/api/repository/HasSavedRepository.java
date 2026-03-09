@@ -9,9 +9,9 @@ import com.yeschef.api.model.HasSaved;
 
 public interface HasSavedRepository extends JpaRepository<HasSaved, Long> {
 
-    // Get all saved entries for a given user
-    List<HasSaved> findByUserId(Long userId);
+    // Get all saved entries for a given user (user_Id = id of the User relation)
+    List<HasSaved> findByUser_Id(Long userId);
 
-    // Find a specific save entry by user and recipe (used to check duplicates and for deletion)
-    Optional<HasSaved> findByUserIdAndRecipeId(Long userId, Long recipeId);
+    // Find a specific save entry by user and recipe ids (used to check duplicates and for deletion)
+    Optional<HasSaved> findByUser_IdAndRecipe_Id(Long userId, Long recipeId);
 }

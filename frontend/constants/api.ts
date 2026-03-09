@@ -11,3 +11,11 @@ export const API_BASE_URL =
 export function recipesUrl(path = '') {
   return `${API_BASE_URL}/recipes${path}`;
 }
+
+export function usersUrl(path = '') {
+  return `${API_BASE_URL}/users${path}`;
+}
+
+export function savedUrl(userId: number, path = '') {
+  return `${API_BASE_URL}/users/${userId}/saved${path}`;
+}
