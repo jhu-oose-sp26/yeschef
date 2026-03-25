@@ -34,6 +34,12 @@ public class User{
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Rating> ratings;
 
+    @OneToMany(mappedBy = "self", cascade = CascadeType.ALL, orphanRemoval = true) 
+    private List<Friendship> friendshipsSent;  
+
+    @OneToMany(mappedBy = "friend", cascade = CascadeType.ALL, orphanRemoval = true) 
+    private List<Friendship> friendshipsReceived;  
+
     // getters and setters
     public Long getId() { return id; }
     public String getUsername() { return username; }
@@ -41,6 +47,16 @@ public class User{
     public List<HasLiked> getLikes() { return likes; }
     public List<HasSaved> getSaves() { return saves; }
     public List<Rating> getRatings() { return ratings; }
+    public List<Friendship> getFriendships() {
+        List<Friendship> temp = new java.util.ArrayList<>();
+        if (friendshipsSent != null) {
+            temp.addAll(friendshipsSent);
+        }
+        if (friendshipsReceived != null) {
+            temp.addAll(friendshipsReceived);
+        }
+        return temp;
+    }
 
     public void setId(Long id) { this.id = id; }
     public void setUsername(String username) { this.username = username; }
