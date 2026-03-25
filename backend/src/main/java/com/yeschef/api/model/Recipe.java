@@ -3,6 +3,7 @@ package com.yeschef.api.model;
 import jakarta.persistence.*;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 // import org.hibernate.annotations.JdbcTypeCode;
@@ -24,20 +25,23 @@ public class Recipe {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private RecipeSource source;
 
-    // one recipe has many ratings
-    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its ratings
+    // one recipe has many ratings (excluded from JSON to avoid circular refs; use dedicated endpoints when needed)
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Rating> ratings;
 
     @OneToOne(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Instruct instruction;
 
-    // one recipe can have many likes
-    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its likes
+    // one recipe can have many likes (excluded from JSON to avoid circular refs)
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<HasLiked> likes;
 
-    // one recipe can have many saves
-    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true) // deleting a recipe deletes its likes
+    // one recipe can have many saves (excluded from JSON to avoid circular refs)
+    @OneToMany(mappedBy="recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<HasSaved> saves;
 
     // child Ingredient object
