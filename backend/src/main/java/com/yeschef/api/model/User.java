@@ -33,11 +33,10 @@ public class User{
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Rating> ratings;
-
     @OneToMany(mappedBy = "self", cascade = CascadeType.ALL, orphanRemoval = true) 
     private List<Friendship> friendshipsSent;  
 
-    @OneToMany(mappedBy = "friend", cascade = CascadeType.ALL, orphanRemoval = true) 
+    @OneToMany(mappedBy = "friend", cascade = CascadeType.ALL, orphanRemoval = true)     
     private List<Friendship> friendshipsReceived;  
 
     // getters and setters
