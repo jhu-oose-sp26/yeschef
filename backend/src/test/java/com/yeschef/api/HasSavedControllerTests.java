@@ -1,5 +1,36 @@
 package com.yeschef.api;
 
+import java.util.Arrays;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mockito;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.yeschef.api.controller.HasSavedController;
 import com.yeschef.api.model.HasSaved;
 import com.yeschef.api.model.Recipe;
@@ -8,33 +39,9 @@ import com.yeschef.api.repository.HasSavedRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.Arrays;
-import java.util.Optional;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 @WebMvcTest(controllers = HasSavedController.class)
 @Import(HasSavedControllerTests.TestSecurityConfig.class)
+@SuppressWarnings({"null", "unused"})
 class HasSavedControllerTests {
 
     @TestConfiguration
@@ -53,13 +60,13 @@ class HasSavedControllerTests {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private HasSavedRepository hasSavedRepository;
 
-    @MockBean
+    @MockitoBean
     private UserRepository userRepository;
 
-    @MockBean
+    @MockitoBean
     private RecipeRepository recipeRepository;
 
     @BeforeEach
@@ -92,8 +99,7 @@ class HasSavedControllerTests {
         mockMvc.perform(get("/users/{userId}/saved", 1L).with(user("testuser").roles("USER")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].id").value(1L))
-            .andExpect(jsonPath("$[0].recipe.id").value(10L))
-            .andExpect(jsonPath("$[0].recipe.title").value("Pasta"));
+            .andExpect(jsonPath("$[0].recipeId").value(10L));
     }
 
     @Test
@@ -149,8 +155,7 @@ class HasSavedControllerTests {
                     .with(csrf()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
-            .andExpect(jsonPath("$.user.id").value(1L))
-            .andExpect(jsonPath("$.recipe.id").value(10L));
+            .andExpect(jsonPath("$.recipeId").value(10L));
     }
 
     @Test
