@@ -108,7 +108,7 @@ The project is split into two parts: a **frontend** (React Native / Expo) and a 
 1. Clone the repository
    ```sh
    git clone https://github.com/jhu-oose-sp26/yeschef.git
-   cd team-JJARC/backend
+   cd yeschef/backend
    ```
 2. Configure your database connection in `src/main/resources/application.properties`
    ```properties
