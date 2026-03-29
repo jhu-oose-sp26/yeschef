@@ -61,9 +61,9 @@ class UserControllerTests {
 
     @MockitoBean
     private UserRepository userRepository;
-    @MockBean
+    @MockitoBean
     private FriendshipRepository friendshipRepository;
-    @MockBean
+    @MockitoBean
     private RecipeRepository recipeRepository;
 
     @BeforeEach
