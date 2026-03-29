@@ -63,4 +63,5 @@ public class User{
     public void setLikes(List<HasLiked> likes) { this.likes = likes; }
     public void setSaves(List<HasSaved> saves) { this.saves = saves; }
     public void setRatings(List<Rating> ratings) { this.ratings = ratings; }
+    public void setFriendshipsSent(List<Friendship> friendshipsSent) { this.friendshipsSent = friendshipsSent; }
 }
