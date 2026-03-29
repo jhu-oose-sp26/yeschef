@@ -30,4 +30,16 @@ public class Rating {
 
     @Column(nullable = false) // this column cannot be null
     private int easeOfExecution;
+
+    public Long getId() { return id; }
+    public Recipe getRecipe() { return recipe; }
+    public User getUser() { return user; }
+    public int getTasteQuality() { return tasteQuality; }
+    public int getEaseOfExecution() { return easeOfExecution; }
+
+    public void setId(Long id) { this.id = id; }
+    public void setRecipe(Recipe recipe) { this.recipe = recipe; }
+    public void setUser(User user) { this.user = user; }
+    public void setTasteQuality(int tasteQuality) { this.tasteQuality = tasteQuality; }
+    public void setEaseOfExecution(int easeOfExecution) { this.easeOfExecution = easeOfExecution; }
 }
