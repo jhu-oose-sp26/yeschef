@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.yeschef.api.model.Recipe;
+import com.yeschef.api.model.RecipeSource;
 
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
@@ -20,6 +21,10 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     @Override
     @EntityGraph(attributePaths = { "source", "instruction", "instruction.steps", "ingredients" })
     java.util.Optional<Recipe> findById(Long id);
+
+    // find a recipe by its source id
+    List<Recipe> findBySourceId(Long sourceId);
+    List<Recipe> findBySourceIn(List<RecipeSource> sources);
 
     // FILTERING:
     // Query to get the time it takes to make a recipe by summing prep time and cooktime

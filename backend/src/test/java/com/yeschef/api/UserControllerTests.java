@@ -2,9 +2,13 @@ package com.yeschef.api;
 
 import com.yeschef.api.controller.UserController;
 import com.yeschef.api.model.Friendship;
+import com.yeschef.api.model.Recipe;
+import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.FriendshipRepository;
+import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
+import com.yeschef.api.seed.GitHubRecipeClient.RecipeRemoteFile;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,12 +25,14 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -56,11 +62,14 @@ class UserControllerTests {
     private UserRepository userRepository;
     @MockBean
     private FriendshipRepository friendshipRepository;
+    @MockBean
+    private RecipeRepository recipeRepository;
 
     @BeforeEach
     void resetMocks() {
         Mockito.reset(userRepository);
         Mockito.reset(friendshipRepository);
+        Mockito.reset(recipeRepository);
     }
 
     // --- GET /users ---
@@ -406,5 +415,45 @@ class UserControllerTests {
                         .with(user("testuser").roles("USER"))
                         .with(csrf()))
                 .andExpect(status().isBadRequest());
+    }
+
+    // test getting friends' recipes
+    @Test
+    void getFriendsRecipes_returnsRecipesFromAllFriends() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        alice.setUsername("alice");
+
+        User bob = new User();
+        bob.setId(2L);
+        bob.setUsername("bob");
+
+        // set up bob's recipes 
+        RecipeSource bobsSource = new RecipeSource();
+        ReflectionTestUtils.setField(bobsSource, "id", 10L);
+        bobsSource.setUser(bob);
+        
+        bob.setRecipeSources(java.util.Collections.singletonList(bobsSource));
+
+        // make friendship
+        Friendship friendship = new Friendship();
+        friendship.setSelf(alice);
+        friendship.setFriend(bob);
+        alice.setFriendshipsSent(java.util.Collections.singletonList(friendship));
+
+        // add recipe to bob
+        Recipe bobsRecipe = new Recipe();
+        bobsRecipe.setId(100L);
+        bobsRecipe.setTitle("Lasagna");
+        bobsRecipe.setSource(bobsSource);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(recipeRepository.findBySourceIn(anyList())).thenReturn(java.util.Collections.singletonList(bobsRecipe));
+
+        mockMvc.perform(get("/users/{id}/friends/recipes", 1L)
+                .with(user("testuser").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(100L))
+                .andExpect(jsonPath("$[0].title").value("Lasagna"));
     }
 }

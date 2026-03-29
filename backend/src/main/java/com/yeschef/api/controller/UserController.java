@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -17,7 +18,10 @@ import java.util.stream.Collectors;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.model.Friendship;
+import com.yeschef.api.model.Recipe;
+import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.repository.FriendshipRepository;
+import com.yeschef.api.repository.RecipeRepository;
 
 // This controller exposes REST endpoints related to users.
 @RestController
@@ -26,10 +30,12 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
+    private final RecipeRepository recipeRepository;
 
-    public UserController(UserRepository userRepository, FriendshipRepository friendshipRepository) {
+    public UserController(UserRepository userRepository, FriendshipRepository friendshipRepository, RecipeRepository recipeRepository) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
+        this.recipeRepository = recipeRepository;
     }
 
     // Handle GET requests to /users
@@ -154,5 +160,31 @@ public class UserController {
         }
 
         return ResponseEntity.notFound().build();
+    }
+
+    // GET: get a user's friend's recipes
+    // Returns list of recipes from all users this user is friends w/
+    @GetMapping("/{id}/friends/recipes")
+    public ResponseEntity<List<Recipe>> getFriendsRecipes(@PathVariable Long id) {
+        Optional<User> userMaybe = userRepository.findById(id); // find user
+        if (userMaybe.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        User user = userMaybe.get();
+
+        List<RecipeSource> friendsSources = user.getFriendshipsSent().stream()
+                .map(Friendship::getFriend) // get user's friend
+                .flatMap(friend -> friend.getRecipeSources().stream()) // get recipe sources for friend
+                .collect(Collectors.toList());
+
+        // if friend has no recipes
+        if (friendsSources.isEmpty()) {
+            List<Recipe> emptyList = new java.util.ArrayList<>();
+            return ResponseEntity.ok(emptyList);
+        }
+
+        // get all the recipes friends made
+        List<Recipe> allFriendsRecipes = recipeRepository.findBySourceIn(friendsSources);
+        return ResponseEntity.ok(allFriendsRecipes);
     }
 }
