@@ -21,6 +21,9 @@ const MAPPING = {
   'book.fill': 'menu-book',
   'book.closed.fill': 'menu-book',
   'person.fill': 'person',
+  'star.fill': 'star',
+  'star': 'star-border',
+  'person.2.fill': 'people',
 } as IconMapping;
 
 /**

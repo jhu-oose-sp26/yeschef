@@ -19,3 +19,7 @@ export function usersUrl(path = '') {
 export function savedUrl(userId: number, path = '') {
   return `${API_BASE_URL}/users/${userId}/saved${path}`;
 }
+
+export function ratingsUrl(path = '') {
+  return `${API_BASE_URL}/ratings${path}`;
+}
