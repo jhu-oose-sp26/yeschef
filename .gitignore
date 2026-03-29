@@ -6,6 +6,8 @@ frontend/dist/
 
 # ===== Maven / Spring =====
 backend/target/
+backend/.m2repo/
+backend/.m2home/
 
 # ===== Environment files =====
 .env
