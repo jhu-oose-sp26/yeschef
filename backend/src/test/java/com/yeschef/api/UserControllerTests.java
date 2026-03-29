@@ -1,7 +1,9 @@
 package com.yeschef.api;
 
 import com.yeschef.api.controller.UserController;
+import com.yeschef.api.model.Friendship;
 import com.yeschef.api.model.User;
+import com.yeschef.api.repository.FriendshipRepository;
 import com.yeschef.api.repository.UserRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -52,10 +54,13 @@ class UserControllerTests {
 
     @MockBean
     private UserRepository userRepository;
+    @MockBean
+    private FriendshipRepository friendshipRepository;
 
     @BeforeEach
     void resetMocks() {
         Mockito.reset(userRepository);
+        Mockito.reset(friendshipRepository);
     }
 
     // --- GET /users ---
@@ -303,5 +308,103 @@ class UserControllerTests {
                 delete("/users/{id}", 1L)
                     .with(csrf()))
             .andExpect(status().isUnauthorized());
+    }
+
+    // TESTS FOR FRIENDSHIP!
+    // test POST
+    @Test
+    void addFriend_returnsOk_whenUsersExist() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        User bob = new User();
+        bob.setId(2L);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(friendshipRepository.findBySelfAndFriend(alice, bob)).thenReturn(Optional.empty());
+
+        mockMvc.perform(
+                post("/users/{id}/friends/{friendId}", 1L, 2L)
+                        .with(user("testuser").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(friendshipRepository, times(1)).save(any(Friendship.class));
+    }
+
+    // test POST
+    @Test
+    void addFriend_returnsConflict_whenFriendshipAlreadyExists() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        User bob = new User();
+        bob.setId(2L);
+        Friendship existing = new Friendship();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(friendshipRepository.findBySelfAndFriend(alice, bob)).thenReturn(Optional.of(existing));
+
+        mockMvc.perform(
+                post("/users/{id}/friends/{friendId}", 1L, 2L)
+                        .with(user("testuser").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isConflict());
+
+        verify(friendshipRepository, never()).save(any());
+    }
+
+    @Test
+    void getFriends_returnsUsernames() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        alice.setUsername("alice");
+
+        User bob = new User();
+        bob.setId(2L);
+        bob.setUsername("bob");
+
+        Friendship f = new Friendship();
+        f.setSelf(alice);
+        f.setFriend(bob);
+        
+        // Simulating the bidirectional list helper in your User model
+        alice.setFriendshipsSent(java.util.Collections.singletonList(f));
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+
+        mockMvc.perform(get("/users/{id}/friends", 1L).with(user("testuser").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("bob"));
+    }
+
+    @Test
+    void removeFriend_returnsNoContent_whenFriendshipExists() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        User bob = new User();
+        bob.setId(2L);
+        Friendship f = new Friendship();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(friendshipRepository.findBySelfAndFriend(alice, bob)).thenReturn(Optional.of(f));
+
+        mockMvc.perform(
+                delete("/users/{id}/friends/{friendId}", 1L, 2L)
+                        .with(user("testuser").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(friendshipRepository, times(1)).delete(f);
+    }
+
+    @Test
+    void addFriend_returnsBadRequest_whenAddingSelf() throws Exception {
+        mockMvc.perform(
+                post("/users/{id}/friends/{friendId}", 1L, 1L)
+                        .with(user("testuser").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
     }
 }
