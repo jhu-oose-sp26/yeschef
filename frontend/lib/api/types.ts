@@ -33,6 +33,23 @@ export interface Recipe {
   saves?: unknown[];
 }
 
+/** Rating from GET /ratings endpoints. */
+export interface RatingResponse {
+  id: number;
+  recipeId: number;
+  userId: number;
+  tasteQuality: number;
+  easeOfExecution: number;
+}
+
+/** Body for POST /ratings and PUT /ratings/{id}. */
+export interface RatingRequest {
+  recipeId: number;
+  userId: number;
+  tasteQuality: number;
+  easeOfExecution: number;
+}
+
 /** User from GET /users or GET /users/{id}. */
 export interface User {
   id: number;
