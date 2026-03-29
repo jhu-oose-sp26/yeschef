@@ -12,9 +12,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.UserRepository;
+import com.yeschef.api.model.Friendship;
+import com.yeschef.api.repository.FriendshipRepository;
 
 // This controller exposes REST endpoints related to users.
 @RestController
@@ -22,9 +25,11 @@ import com.yeschef.api.repository.UserRepository;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final FriendshipRepository friendshipRepository;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, FriendshipRepository friendshipRepository) {
         this.userRepository = userRepository;
+        this.friendshipRepository = friendshipRepository;
     }
 
     // Handle GET requests to /users
@@ -86,5 +91,68 @@ public class UserController {
         }
         userRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // FRIENDSHIP CONTROLLER
+    // GET: get list of the ids of all of a user's friends from a user's id
+    @GetMapping("/{id}/friends")
+    public ResponseEntity<List<String>> getFriends(@PathVariable Long id) {
+        return userRepository.findById(id)
+            .map(user -> {
+                List<String> friends = user.getFriendships().stream()
+                    .map(f -> f.getFriend().getId().equals(id) ? f.getSelf().getUsername() : f.getFriend().getUsername())
+                    .distinct()
+                    .collect(Collectors.toList());
+                return ResponseEntity.ok(friends);
+            })
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    // POST: make a new friendship
+    @PostMapping("/{id}/friends/{friendId}")
+    public ResponseEntity<Void> addFriend(@PathVariable Long id, @PathVariable Long friendId) {
+        if (id.equals(friendId)) return ResponseEntity.badRequest().build();
+
+        Optional<User> selfMaybe = userRepository.findById(id);
+        Optional<User> friendMaybe = userRepository.findById(friendId);
+
+        if (selfMaybe.isEmpty() || friendMaybe.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User self = selfMaybe.get();
+        User friend = friendMaybe.get();
+
+        // Check if already exists
+        if (friendshipRepository.findBySelfAndFriend(self, friend).isPresent()) {
+            return ResponseEntity.status(409).build();
+        }
+
+        Friendship friendship = new Friendship();
+        friendship.setSelf(self);
+        friendship.setFriend(friend);
+        friendshipRepository.save(friendship);
+
+        return ResponseEntity.ok().build();
+    }
+
+    // DELETE: delete a friendship
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public ResponseEntity<Void> removeFriend(@PathVariable Long id, @PathVariable Long friendId) {
+        Optional<User> selfMaybe = userRepository.findById(id);
+        Optional<User> friendMaybe = userRepository.findById(friendId);
+
+        if (selfMaybe.isEmpty() || friendMaybe.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Optional<Friendship> connection = friendshipRepository.findBySelfAndFriend(selfMaybe.get(), friendMaybe.get());
+        
+        if (connection.isPresent()) {
+            friendshipRepository.delete(connection.get());
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.notFound().build();
     }
 }
