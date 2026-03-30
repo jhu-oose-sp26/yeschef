@@ -16,7 +16,7 @@ import { Fonts } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
-import { getSavedRecipes, getUsers } from '@/lib/api/users';
+import { getSavedRecipes, getUsers, getUserRecipes } from '@/lib/api/users';
 import type { User } from '@/lib/api/users';
 
 /**
@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [savedCount, setSavedCount] = useState<number>(0);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+  const [createdRecipes, setCreatedRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,11 +47,17 @@ export default function ProfileScreen() {
       if (!currentUser) {
         setSavedCount(0);
         setSavedRecipes([]);
+        setCreatedRecipes([]);
         return;
       }
 
-      const saved = await getSavedRecipes(currentUser.id);
+      const [saved, created] = await Promise.all([
+        getSavedRecipes(currentUser.id),
+        getUserRecipes(currentUser.id),
+      ]);
+
       setSavedCount(saved.length);
+      setCreatedRecipes(created);
 
       const recipeIds = saved.map((s) => s.recipeId).filter((id): id is number => id != null);
       const recipes = await Promise.all(recipeIds.map((id) => getRecipe(id)));
@@ -108,7 +115,7 @@ export default function ProfileScreen() {
           <StatCard label="Recipes saved" value={String(savedCount)} cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
         </View>
         <View style={styles.statsRow}>
-          <StatCard label="Recipes created" value="—" cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
+          <StatCard label="Recipes created" value={String(createdRecipes.length)} cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
           <StatCard label="Avg. rating" value="—" cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
         </View>
       </View>
@@ -138,6 +145,44 @@ export default function ProfileScreen() {
         ) : (
           <View style={styles.cookbookList}>
             {savedRecipes.map((recipe) => (
+              <Link key={recipe.id} href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id) } }} asChild>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.cookbookCard,
+                    { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.9 : 1 },
+                  ]}>
+                  <ThemedText type="defaultSemiBold" style={styles.cardTitle} numberOfLines={2}>
+                    {recipe.title}
+                  </ThemedText>
+                  {recipe.instruction && (
+                    <ThemedText style={styles.cardMeta}>
+                      {recipe.instruction.prepTime + recipe.instruction.cookTime} min
+                    </ThemedText>
+                  )}
+                  <IconSymbol name="chevron.right" size={20} color={cardBorder} style={styles.cardChevron} />
+                </Pressable>
+              </Link>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          My recipes
+        </ThemedText>
+        {createdRecipes.length === 0 ? (
+          <View style={[styles.cookbookPlaceholder, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <View style={[styles.cookbookIconWrap, { backgroundColor: accent + '18' }]}>
+              <IconSymbol name="pencil" size={40} color={accent} />
+            </View>
+            <ThemedText style={styles.cookbookMessage}>
+              You haven't created any recipes yet.
+            </ThemedText>
+          </View>
+        ) : (
+          <View style={styles.cookbookList}>
+            {createdRecipes.map((recipe) => (
               <Link key={recipe.id} href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id) } }} asChild>
                 <Pressable
                   style={({ pressed }) => [
