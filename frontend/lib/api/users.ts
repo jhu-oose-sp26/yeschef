@@ -56,3 +56,12 @@ export async function getFriendsRecipes(userId: number): Promise<Recipe[]> {
   });
   return handleResponse<Recipe[]>(res);
 }
+
+/** GET /users/{id}/recipes - fetch recipes created by a user. */
+export async function getUserRecipes(userId: number): Promise<Recipe[]> {
+  const res = await fetch(usersUrl(`/${userId}/recipes`), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+  return handleResponse<Recipe[]>(res);
+}
