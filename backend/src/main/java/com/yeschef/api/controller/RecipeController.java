@@ -22,8 +22,10 @@ import com.yeschef.api.DTO.InstructionDTO.InstructionStepDTO;
 import com.yeschef.api.model.Instruct;
 import com.yeschef.api.model.Recipe;
 import com.yeschef.api.model.RecipeSource;
+import com.yeschef.api.model.User;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.RecipeSourceRepository;
+import com.yeschef.api.repository.UserRepository;
 
 // This controller exposes REST endpoints related to recipes.
 @RestController
@@ -34,11 +36,13 @@ public class RecipeController {
     // We use this to talk to the database for Recipe entities.
     private final RecipeRepository recipeRepository;
     private final RecipeSourceRepository sourceRepository;
+    private final UserRepository userRepository;
 
     // Constructor-based dependency injection tells Spring how to provide the repository.
-    public RecipeController(RecipeRepository recipeRepository, RecipeSourceRepository sourceRepository) {
+    public RecipeController(RecipeRepository recipeRepository, RecipeSourceRepository sourceRepository, UserRepository userRepository) {
         this.recipeRepository = recipeRepository;
         this.sourceRepository = sourceRepository;
+        this.userRepository = userRepository;
     }
 
     // convert recipe object to dto:
@@ -181,12 +185,22 @@ public class RecipeController {
     public ResponseEntity<RecipeResponseDTO> createRecipe(
         @RequestBody RecipeRequestDTO dto) {
 
+        // if a userId is provided, verify the user exists and link them to the recipe source
+        if (dto.getUserId() != null) {
+            Optional<User> userMaybe = userRepository.findById(dto.getUserId());
+            if (userMaybe.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            Recipe recipe = toEntity(dto);
+            recipe.getSource().setUser(userMaybe.get());
+            Recipe saved = recipeRepository.save(recipe);
+            return ResponseEntity.ok(toDTO(saved));
+        }
+
         Recipe recipe = toEntity(dto);
         RecipeSource source = recipe.getSource();
         source.setSourceType(RecipeSource.SourceType.valueOf(dto.getSourceType()));
-        // Take the Recipe from the request body, save it to the database, and return the saved version.
         Recipe saved = recipeRepository.save(recipe);
-
         return ResponseEntity.ok(toDTO(saved));
     }
 

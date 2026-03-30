@@ -162,6 +162,20 @@ public class UserController {
         return ResponseEntity.notFound().build();
     }
 
+    // GET: get all recipes created by a user
+    @GetMapping("/{id}/recipes")
+    public ResponseEntity<List<Recipe>> getUserRecipes(@PathVariable Long id) {
+        Optional<User> userMaybe = userRepository.findById(id);
+        if (userMaybe.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<RecipeSource> userSources = userMaybe.get().getRecipeSources();
+        if (userSources == null || userSources.isEmpty()) {
+            return ResponseEntity.ok(new java.util.ArrayList<>());
+        }
+        return ResponseEntity.ok(recipeRepository.findBySourceIn(userSources));
+    }
+
     // GET: get a user's friend's recipes
     // Returns list of recipes from all users this user is friends w/
     @GetMapping("/{id}/friends/recipes")

@@ -418,6 +418,54 @@ class UserControllerTests {
                 .andExpect(status().isBadRequest());
     }
 
+    // --- GET /users/{id}/recipes ---
+
+    @Test
+    void getUserRecipes_returnsRecipesCreatedByUser() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        alice.setUsername("alice");
+
+        RecipeSource aliceSource = new RecipeSource();
+        ReflectionTestUtils.setField(aliceSource, "id", 10L);
+        aliceSource.setUser(alice);
+        alice.setRecipeSources(java.util.Collections.singletonList(aliceSource));
+
+        Recipe recipe = new Recipe();
+        recipe.setId(42L);
+        recipe.setTitle("Alice's Soup");
+        recipe.setSource(aliceSource);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(recipeRepository.findBySourceIn(anyList())).thenReturn(java.util.Collections.singletonList(recipe));
+
+        mockMvc.perform(get("/users/{id}/recipes", 1L).with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(42L))
+            .andExpect(jsonPath("$[0].title").value("Alice's Soup"));
+    }
+
+    @Test
+    void getUserRecipes_returnsEmptyList_whenUserHasNoRecipes() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        alice.setRecipeSources(java.util.Collections.emptyList());
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+
+        mockMvc.perform(get("/users/{id}/recipes", 1L).with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void getUserRecipes_returnsNotFound_whenUserDoesNotExist() throws Exception {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/users/{id}/recipes", 999L).with(user("testuser").roles("USER")))
+            .andExpect(status().isNotFound());
+    }
+
     // test getting friends' recipes
     @Test
     void getFriendsRecipes_returnsRecipesFromAllFriends() throws Exception {

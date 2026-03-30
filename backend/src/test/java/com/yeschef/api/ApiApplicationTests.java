@@ -40,8 +40,10 @@ import com.yeschef.api.controller.RecipeController;
 import com.yeschef.api.model.Instruct;
 import com.yeschef.api.model.Recipe;
 import com.yeschef.api.model.RecipeSource;
+import com.yeschef.api.model.User;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.RecipeSourceRepository;
+import com.yeschef.api.repository.UserRepository;
 
 @WebMvcTest(controllers = RecipeController.class)
 @Import({
@@ -93,10 +95,14 @@ class ApiApplicationTests {
 	@MockitoBean
 	private RecipeSourceRepository sourceRepository;
 
+	@MockitoBean
+	private UserRepository userRepository;
+
 	@BeforeEach
 	void resetMocks() {
 		Mockito.reset(recipeRepository);
 		Mockito.reset(sourceRepository);
+		Mockito.reset(userRepository);
 	}
 
 	@Test
@@ -368,6 +374,76 @@ class ApiApplicationTests {
             .andExpect(jsonPath("$[0].id").value(1L))
             .andExpect(jsonPath("$[0].title").value("Quick Recipe"));
     }
+
+	@Test
+	void createRecipe_linksUser_whenUserIdProvided() throws Exception {
+		User user = new User();
+		user.setId(1L);
+		user.setUsername("alice");
+
+		when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+		when(sourceRepository.save(any(RecipeSource.class))).thenAnswer(invocation -> {
+			RecipeSource s = invocation.getArgument(0);
+			ReflectionTestUtils.setField(s, "id", 1L);
+			return s;
+		});
+		when(recipeRepository.save(any(Recipe.class))).thenAnswer(invocation -> {
+			Recipe r = invocation.getArgument(0, Recipe.class);
+			ReflectionTestUtils.setField(r, "id", 1L);
+			return r;
+		});
+
+		String json = """
+			{
+			"title": "Alice's Pasta",
+			"sourceType": "USER",
+			"userId": 1,
+			"prepTime": 10,
+			"cookTime": 20,
+			"steps": [{"stepNumber": 1, "stepDescription": "Boil water"}],
+			"ingredients": [{"ingredient": "pasta", "quantity": "200g"}]
+			}
+			""";
+
+		mockMvc.perform(post("/recipes")
+				.with(user("testuser").roles("USER"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(json))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.title").value("Alice's Pasta"));
+
+		verify(userRepository, times(1)).findById(1L);
+	}
+
+	@Test
+	void createRecipe_returnsNotFound_whenUserIdDoesNotExist() throws Exception {
+		when(userRepository.findById(99L)).thenReturn(Optional.empty());
+		when(sourceRepository.save(any(RecipeSource.class))).thenAnswer(invocation -> {
+			RecipeSource s = invocation.getArgument(0);
+			ReflectionTestUtils.setField(s, "id", 1L);
+			return s;
+		});
+
+		String json = """
+			{
+			"title": "Ghost Recipe",
+			"sourceType": "USER",
+			"userId": 99,
+			"prepTime": 5,
+			"cookTime": 10,
+			"steps": [{"stepNumber": 1, "stepDescription": "Do something"}],
+			"ingredients": [{"ingredient": "air", "quantity": "1 cup"}]
+			}
+			""";
+
+		mockMvc.perform(post("/recipes")
+				.with(user("testuser").roles("USER"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(json))
+			.andExpect(status().isNotFound());
+	}
 
 	// Creates a minimal Recipe with the fields toDTO() requires to avoid NPEs
 	private static Recipe minimalRecipe(Long id, String title) {
