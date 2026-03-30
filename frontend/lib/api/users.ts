@@ -65,3 +65,20 @@ export async function getUserRecipes(userId: number): Promise<Recipe[]> {
   });
   return handleResponse<Recipe[]>(res);
 }
+
+/** POST /users/{userId}/saved/{recipeId} - save a recipe for a user. */
+export async function saveRecipe(userId: number, recipeId: number): Promise<HasSaved> {
+  const res = await fetch(savedUrl(userId, `/${recipeId}`), {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  });
+  return handleResponse<HasSaved>(res);
+}
+
+/** DELETE /users/{userId}/saved/{recipeId} - unsave a recipe for a user. */
+export async function unsaveRecipe(userId: number, recipeId: number): Promise<void> {
+  const res = await fetch(savedUrl(userId, `/${recipeId}`), {
+    method: 'DELETE',
+  });
+  return handleResponse<void>(res);
+}

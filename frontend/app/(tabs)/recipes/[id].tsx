@@ -22,7 +22,7 @@ import {
   updateRating,
 } from '@/lib/api/ratings';
 import type { RatingResponse } from '@/lib/api/ratings';
-import { getUsers } from '@/lib/api/users';
+import { getUsers, getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,6 +33,9 @@ export default function RecipeDetailScreen() {
   const [ratings, setRatings] = useState<RatingResponse[]>([]);
   const [myRating, setMyRating] = useState<RatingResponse | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingToggle, setSavingToggle] = useState(false);
 
   const [tasteDraft, setTasteDraft] = useState(0);
   const [easeDraft, setEaseDraft] = useState(0);
@@ -66,12 +69,16 @@ export default function RecipeDetailScreen() {
       const user = users[0] ?? null;
       if (user) {
         setCurrentUserId(user.id);
-        const existing = await getUserRatingForRecipe(user.id, numId);
+        const [existing, savedList] = await Promise.all([
+          getUserRatingForRecipe(user.id, numId),
+          getSavedRecipes(user.id).catch(() => []),
+        ]);
         if (existing) {
           setMyRating(existing);
           setTasteDraft(existing.tasteQuality);
           setEaseDraft(existing.easeOfExecution);
         }
+        setIsSaved(savedList.some((s) => s.recipeId === numId));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load recipe');
@@ -83,6 +90,24 @@ export default function RecipeDetailScreen() {
   useEffect(() => {
     loadRecipe();
   }, [loadRecipe]);
+
+  const handleToggleSave = async () => {
+    if (!currentUserId) return;
+    setSavingToggle(true);
+    try {
+      if (isSaved) {
+        await unsaveRecipe(currentUserId, numId);
+        setIsSaved(false);
+      } else {
+        await saveRecipe(currentUserId, numId);
+        setIsSaved(true);
+      }
+    } catch (e) {
+      // silently ignore — state stays unchanged
+    } finally {
+      setSavingToggle(false);
+    }
+  };
 
   const handleSubmitRating = async () => {
     if (!currentUserId || tasteDraft === 0 || easeDraft === 0) return;
@@ -173,6 +198,28 @@ export default function RecipeDetailScreen() {
             </View>
           )}
         </View>
+        {currentUserId != null && (
+          <Pressable
+            onPress={handleToggleSave}
+            disabled={savingToggle}
+            style={({ pressed }) => [
+              styles.saveBtn,
+              {
+                backgroundColor: isSaved ? accent : 'transparent',
+                borderColor: accent,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            {savingToggle ? (
+              <ActivityIndicator size="small" color={isSaved ? '#fff' : accent} />
+            ) : (
+              <ThemedText style={[styles.saveBtnText, { color: isSaved ? '#fff' : accent }]}>
+                {isSaved ? '✓ Saved' : '+ Save recipe'}
+              </ThemedText>
+            )}
+          </Pressable>
+        )}
       </View>
 
       {/* Ratings summary */}
@@ -331,6 +378,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   pillText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120,
+  },
+  saveBtnText: {
     fontSize: 14,
     fontWeight: '600',
   },
