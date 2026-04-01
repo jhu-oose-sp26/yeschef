@@ -17,7 +17,7 @@
   <p align="center">
     A social recipe app for rating, sharing, and discovering recipes with friends.
     <br />
-    <a href="./doc/srs/srs_it2.md"><strong>Explore the docs »</strong></a>
+    <a href="./doc/srs/srs_it4.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/jhu-oose-sp26/yeschef/issues">Report Bug</a>
@@ -165,11 +165,11 @@ _For API endpoint details, see the controller source at [`backend/src/main/java/
 ### Must Have
 - [x] Rate recipes on taste quality and ease of execution
 - [x] Upload personal recipes
-- [ ] Discover recipes from external sources (e.g. NYT Cooking)
+- [x] Discover recipes from external sources (e.g. NYT Cooking)
 - [ ] View friends' recipes and social feed
-- [ ] User profile with stats and personal cookbook
-- [ ] Search and filter by cuisine, ingredients, and difficulty
-- [ ] Save recipes to a personal collection
+- [x] User profile with stats and personal cookbook
+- [ ] Search and filter ingredients, recipe time, and difficulty
+- [x] Save recipes to a personal collection
 - [ ] Cross-device authentication
 
 ### Nice to Have
@@ -178,6 +178,10 @@ _For API endpoint details, see the controller source at [`backend/src/main/java/
 - [ ] Upload recipes by photographing handwritten notes
 - [ ] Short-form cooking videos
 - [ ] Year-in-review "Wrapped" summary
+- [ ] Comment on recipes
+- [ ] Notifications for friend requests and recipe likes
+- [ ] One-line recipe summaries
+- [ ] Filter recipes by cuisine type and allergens
 
 See the [open issues](https://github.com/jhu-oose-sp26/yeschef/issues) for a full list of proposed features and known issues.
 
