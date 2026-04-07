@@ -24,7 +24,7 @@ const MAPPING = {
   'star.fill': 'star',
   'star': 'star-border',
   'plus.circle' : 'add-circle-outline',
-  'person.2.fill': 'people',
+  'books.vertical.fill': 'library-books',
 } as IconMapping;
 
 /**
