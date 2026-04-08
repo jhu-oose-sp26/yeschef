@@ -25,6 +25,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -40,6 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = UserController.class)
 @Import(UserControllerTests.TestSecurityConfig.class)
+// Provides a dummy JWT secret so SupabaseJwtFilter can be instantiated in the test context
+@TestPropertySource(properties = "supabase.jwt-secret=test-secret-for-testing")
 @SuppressWarnings({"null", "unused"})
 class UserControllerTests {
 

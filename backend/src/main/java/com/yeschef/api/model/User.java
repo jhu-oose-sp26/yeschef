@@ -19,6 +19,9 @@ public class User{
     @GeneratedValue(strategy = GenerationType.IDENTITY) // will auto-generate ID
     private Long id;
 
+    @Column(name = "supabase_id", nullable = false, unique = true)
+    private String supabaseId;
+
     @Column(nullable=false, unique=true)
     private String username;
 
@@ -41,6 +44,7 @@ public class User{
 
     // getters and setters
     public Long getId() { return id; }
+    public String getSupabaseId() { return supabaseId; }
     public String getUsername() { return username; }
     public List<RecipeSource> getRecipeSources() { return recipeSources; }
     public List<HasLiked> getLikes() { return likes; }
@@ -59,6 +63,7 @@ public class User{
     public List<Friendship> getFriendshipsSent() { return friendshipsSent; }
 
     public void setId(Long id) { this.id = id; }
+    public void setSupabaseId(String supabaseId) { this.supabaseId = supabaseId; }
     public void setUsername(String username) { this.username = username; }
     public void setRecipeSources(List<RecipeSource> recipeSources) { this.recipeSources = recipeSources; }
     public void setLikes(List<HasLiked> likes) { this.likes = likes; }
