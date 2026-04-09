@@ -175,6 +175,13 @@ public class RecipeController {
         return ResponseEntity.ok(recipesFiltered);
     }
 
+    // Handle GET requests for searching by recipe name
+    @GetMapping("/by-name")
+    ResponseEntity<List<Recipe>> getByName (@RequestParam String name) {
+        List<Recipe> filtered = recipeRepository.findByName(name);
+        return ResponseEntity.ok(filtered);
+    }
+
     // Handles POST requests to /recipes
     // Expects a Recipe JSON in the request body, converts it to a Recipe entity, saves it to the database, and returns the saved Recipe.
     @PostMapping

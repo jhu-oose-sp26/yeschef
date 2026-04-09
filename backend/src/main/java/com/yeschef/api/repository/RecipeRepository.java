@@ -55,5 +55,12 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       AND s.api_url = :apiUrl
     """)
     boolean existsByTitleAndSourceApiUrl(@Param("title") String title, @Param("apiUrl") String apiUrl);
+
+    @Query("""
+    SELECT r
+    FROM Recipe r
+    WHERE LOWER(r.title) LIKE LOWER(CONCAT('%', :name, '%'))
+    """)
+    List<Recipe> findByName(@Param("name") String name);
 }
 
