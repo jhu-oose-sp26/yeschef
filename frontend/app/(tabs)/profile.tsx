@@ -16,7 +16,7 @@ import { Fonts } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
-import { getSavedRecipes, getUsers } from '@/lib/api/users';
+import { getSavedRecipes, getUsers, getUserRecipes } from '@/lib/api/users';
 import type { User } from '@/lib/api/users';
 
 /**
@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [savedCount, setSavedCount] = useState<number>(0);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+  const [createdRecipes, setCreatedRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,11 +47,17 @@ export default function ProfileScreen() {
       if (!currentUser) {
         setSavedCount(0);
         setSavedRecipes([]);
+        setCreatedRecipes([]);
         return;
       }
 
-      const saved = await getSavedRecipes(currentUser.id);
+      const [saved, created] = await Promise.all([
+        getSavedRecipes(currentUser.id),
+        getUserRecipes(currentUser.id),
+      ]);
+
       setSavedCount(saved.length);
+      setCreatedRecipes(created);
 
       const recipeIds = saved.map((s) => s.recipeId).filter((id): id is number => id != null);
       const recipes = await Promise.all(recipeIds.map((id) => getRecipe(id)));
@@ -108,14 +115,14 @@ export default function ProfileScreen() {
           <StatCard label="Recipes saved" value={String(savedCount)} cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
         </View>
         <View style={styles.statsRow}>
-          <StatCard label="Recipes created" value="—" cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
+          <StatCard label="Recipes created" value={String(createdRecipes.length)} cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
           <StatCard label="Avg. rating" value="—" cardBg={cardBg} cardBorder={cardBorder} accent={accent} />
         </View>
       </View>
 
       <View style={styles.section}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
-          My digital cookbook
+          My saved recipes
         </ThemedText>
         {!user ? (
           <View style={[styles.cookbookPlaceholder, { backgroundColor: cardBg, borderColor: cardBorder }]}>
@@ -142,17 +149,69 @@ export default function ProfileScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.cookbookCard,
-                    { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.9 : 1 },
+                    { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.85 : 1 },
                   ]}>
-                  <ThemedText type="defaultSemiBold" style={styles.cardTitle} numberOfLines={2}>
-                    {recipe.title}
-                  </ThemedText>
-                  {recipe.instruction && (
-                    <ThemedText style={styles.cardMeta}>
-                      {recipe.instruction.prepTime + recipe.instruction.cookTime} min
-                    </ThemedText>
-                  )}
-                  <IconSymbol name="chevron.right" size={20} color={cardBorder} style={styles.cardChevron} />
+                  <View style={[styles.cardAccentBar, { backgroundColor: accent }]} />
+                  <View style={styles.cardBody}>
+                    <View style={styles.cardTitleRow}>
+                      <ThemedText type="defaultSemiBold" style={styles.cardTitle} numberOfLines={2}>
+                        {recipe.title}
+                      </ThemedText>
+                      <IconSymbol name="chevron.right" size={18} color={accent} />
+                    </View>
+                    {recipe.instruction && (
+                      <View style={[styles.cardPill, { backgroundColor: accent + '22' }]}>
+                        <ThemedText style={[styles.cardPillText, { color: accent }]}>
+                          {recipe.instruction.prepTime + recipe.instruction.cookTime} min
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+                </Pressable>
+              </Link>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Uploaded Recipes
+        </ThemedText>
+        {createdRecipes.length === 0 ? (
+          <View style={[styles.cookbookPlaceholder, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <View style={[styles.cookbookIconWrap, { backgroundColor: accent + '18' }]}>
+              <IconSymbol name="pencil" size={40} color={accent} />
+            </View>
+            <ThemedText style={styles.cookbookMessage}>
+              You haven't created any recipes yet.
+            </ThemedText>
+          </View>
+        ) : (
+          <View style={styles.cookbookList}>
+            {createdRecipes.map((recipe) => (
+              <Link key={recipe.id} href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id) } }} asChild>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.cookbookCard,
+                    { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.85 : 1 },
+                  ]}>
+                  <View style={[styles.cardAccentBar, { backgroundColor: accent }]} />
+                  <View style={styles.cardBody}>
+                    <View style={styles.cardTitleRow}>
+                      <ThemedText type="defaultSemiBold" style={styles.cardTitle} numberOfLines={2}>
+                        {recipe.title}
+                      </ThemedText>
+                      <IconSymbol name="chevron.right" size={18} color={accent} />
+                    </View>
+                    {recipe.instruction && (
+                      <View style={[styles.cardPill, { backgroundColor: accent + '22' }]}>
+                        <ThemedText style={[styles.cardPillText, { color: accent }]}>
+                          {recipe.instruction.prepTime + recipe.instruction.cookTime} min
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
                 </Pressable>
               </Link>
             ))}
@@ -315,26 +374,57 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cookbookList: {
-    gap: 12,
+    gap: 10,
   },
   cookbookCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 10,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+      web: {
+        boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+      } as object,
+      default: {},
+    }),
+  },
+  cardAccentBar: {
+    width: 5,
+    alignSelf: 'stretch',
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  cardBody: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingRight: 14,
+    gap: 6,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   cardTitle: {
     flex: 1,
-    minWidth: 0,
+    fontSize: 15,
   },
-  cardMeta: {
-    fontSize: 14,
-    opacity: 0.8,
+  cardPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
-  cardChevron: {
-    marginLeft: 'auto',
+  cardPillText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

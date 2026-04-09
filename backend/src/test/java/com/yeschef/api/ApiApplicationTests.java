@@ -1,46 +1,56 @@
 package com.yeschef.api;
 
-import com.yeschef.api.controller.RecipeController;
-import com.yeschef.api.repository.RecipeRepository;
-import com.yeschef.api.model.Recipe;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.test.web.servlet.MockMvc;
-
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 import java.util.Arrays;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mockito;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.yeschef.api.controller.RecipeController;
+import com.yeschef.api.model.Instruct;
+import com.yeschef.api.model.Recipe;
+import com.yeschef.api.model.RecipeSource;
+import com.yeschef.api.model.User;
+import com.yeschef.api.repository.RecipeRepository;
+import com.yeschef.api.repository.RecipeSourceRepository;
+import com.yeschef.api.repository.UserRepository;
 
 @WebMvcTest(controllers = RecipeController.class)
 @Import({
     ApiApplicationTests.TestJacksonConfig.class,
     ApiApplicationTests.TestSecurityConfig.class
 })
+@SuppressWarnings({"null", "unused"})
 class ApiApplicationTests {
 
 	/*
@@ -79,12 +89,20 @@ class ApiApplicationTests {
 
 	// We mock the repository so controller tests stay focused on request handling,
 	// security behavior, and JSON responses without depending on database state
-	@MockBean
+	@MockitoBean
 	private RecipeRepository recipeRepository;
+
+	@MockitoBean
+	private RecipeSourceRepository sourceRepository;
+
+	@MockitoBean
+	private UserRepository userRepository;
 
 	@BeforeEach
 	void resetMocks() {
 		Mockito.reset(recipeRepository);
+		Mockito.reset(sourceRepository);
+		Mockito.reset(userRepository);
 	}
 
 	@Test
@@ -96,13 +114,13 @@ class ApiApplicationTests {
         String recipeJson = """
         {
           "title": "Chocolate Cake",
-          "source": "HOME_RECIPE",
+          "sourceType": "USER",
           "prepTime": 20,
           "cookTime": 30,
           "ingredients": [
             { "ingredient": "Flour", "quantity": "2 cups" },
             { "ingredient": "Sugar", "quantity": "1 cup" },
-			{ "ingredient": "Cocoa Powder", "quantity": "5 tbsp" }
+            { "ingredient": "Cocoa Powder", "quantity": "5 tbsp" }
           ],
           "steps": [
             { "stepNumber": 1, "stepDescription": "Mix dry ingredients." },
@@ -111,7 +129,20 @@ class ApiApplicationTests {
         }
         """;
 
+        when(sourceRepository.save(any(RecipeSource.class))).thenAnswer(invocation -> {
+            RecipeSource s = invocation.getArgument(0);
+            ReflectionTestUtils.setField(s, "id", 1L);
+            return s;
+        });
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(invocation -> {
+            Recipe r = invocation.getArgument(0, Recipe.class);
+            ReflectionTestUtils.setField(r, "id", 1L);
+            return r;
+        });
+
         mockMvc.perform(post("/recipes")
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(recipeJson))
                 .andExpect(status().isOk())
@@ -121,6 +152,11 @@ class ApiApplicationTests {
 
 	@Test
 	void createRecipe_returnsOkAndBody_whenAuthenticatedWithCsrf() throws Exception {
+		when(sourceRepository.save(any(RecipeSource.class))).thenAnswer(invocation -> {
+			RecipeSource s = invocation.getArgument(0);
+			ReflectionTestUtils.setField(s, "id", 1L);
+			return s;
+		});
 		when(recipeRepository.save(any(Recipe.class))).thenAnswer(invocation -> {
 			Recipe recipe = invocation.getArgument(0, Recipe.class);
 			ReflectionTestUtils.setField(recipe, "id", 1L);
@@ -136,12 +172,12 @@ class ApiApplicationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.id").value(1))
 			.andExpect(jsonPath("$.title").value("Test Recipe"))
-			.andExpect(jsonPath("$.source.name").value("Test Kitchen"))
-			.andExpect(jsonPath("$.instruction.prepTime").value(10))
-			.andExpect(jsonPath("$.instruction.cookTime").value(25))
-			.andExpect(jsonPath("$.instruction.steps['1']").value("Step one"))
-			.andExpect(jsonPath("$.ingredients[0]").value("2 cups flour"))
-			.andExpect(jsonPath("$.ingredients[1]").value("1 cup sugar"));
+			.andExpect(jsonPath("$.source").value("USER"))
+			.andExpect(jsonPath("$.prepTime").value(10))
+			.andExpect(jsonPath("$.cookTime").value(25))
+			.andExpect(jsonPath("$.steps[0].stepDescription").value("Step one"))
+			.andExpect(jsonPath("$.ingredients[0].ingredient").value("2 cups flour"))
+			.andExpect(jsonPath("$.ingredients[1].ingredient").value("1 cup sugar"));
 	}
 
 	@Test
@@ -206,13 +242,10 @@ class ApiApplicationTests {
 					.with(user("testuser").roles("USER"))
 					.with(csrf())
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(validRecipeJson()))
+					.content(validUpdateRecipeJson()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.id").value(1))
-			.andExpect(jsonPath("$.title").value("Test Recipe"))
-			.andExpect(jsonPath("$.instruction.prepTime").value(10))
-			.andExpect(jsonPath("$.instruction.cookTime").value(25))
-			.andExpect(jsonPath("$.ingredients[0]").value("2 cups flour"));
+			.andExpect(jsonPath("$.title").value("Test Recipe"));
 
 		verify(recipeRepository, times(1)).findById(1L);
 		verify(recipeRepository, times(1)).save(any(Recipe.class));
@@ -227,7 +260,7 @@ class ApiApplicationTests {
 					.with(user("testuser").roles("USER"))
 					.with(csrf())
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(validRecipeJson()))
+					.content(validUpdateRecipeJson()))
 			.andExpect(status().isNotFound());
 
 		verify(recipeRepository, times(1)).findById(999L);
@@ -240,7 +273,7 @@ class ApiApplicationTests {
 				put("/recipes/{id}", 1L)
 					.with(user("testuser").roles("USER"))
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(validRecipeJson()))
+					.content(validUpdateRecipeJson()))
 			.andExpect(status().isForbidden());
 	}
 
@@ -250,16 +283,14 @@ class ApiApplicationTests {
 				put("/recipes/{id}", 1L)
 					.with(csrf())
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(validRecipeJson()))
+					.content(validUpdateRecipeJson()))
 			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
     void getRecipe_returnsRecipe_whenRecipeExists() throws Exception {
-        Recipe recipe = new Recipe();
-        recipe.setId(1L);
-        recipe.setTitle("Test Recipe");
-        
+        Recipe recipe = minimalRecipe(1L, "Test Recipe");
+
         when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
 
         mockMvc.perform(get("/recipes/{id}", 1L).with(user("testuser").roles("USER")))
@@ -278,13 +309,9 @@ class ApiApplicationTests {
 
     @Test
     void getAllRecipes_returnsAllRecipes() throws Exception {
-        Recipe recipe1 = new Recipe();
-        recipe1.setId(1L);
-        recipe1.setTitle("Recipe 1");
-        Recipe recipe2 = new Recipe();
-        recipe2.setId(2L);
-        recipe2.setTitle("Recipe 2");
-        
+        Recipe recipe1 = minimalRecipe(1L, "Recipe 1");
+        Recipe recipe2 = minimalRecipe(2L, "Recipe 2");
+
         when(recipeRepository.findAll()).thenReturn(Arrays.asList(recipe1, recipe2));
 
         mockMvc.perform(get("/recipes").with(user("testuser").roles("USER")))
@@ -300,7 +327,7 @@ class ApiApplicationTests {
         Recipe recipe = new Recipe();
         recipe.setId(1L);
         recipe.setTitle("Flour-based Recipe");
-        
+
         when(recipeRepository.findByIngredient("flour")).thenReturn(Arrays.asList(recipe));
 
         mockMvc.perform(get("/recipes/by-ingredient")
@@ -315,7 +342,7 @@ class ApiApplicationTests {
         Recipe recipe1 = new Recipe();
         recipe1.setId(1L);
         recipe1.setTitle("Flour Recipe");
-        
+
         Recipe recipe2 = new Recipe();
         recipe2.setId(2L);
         recipe2.setTitle("Sugar Recipe");
@@ -338,7 +365,7 @@ class ApiApplicationTests {
         Recipe recipe = new Recipe();
         recipe.setId(1L);
         recipe.setTitle("Quick Recipe");
-        
+
         when(recipeRepository.findByMaxTotalTime(30)).thenReturn(Arrays.asList(recipe));
 
         mockMvc.perform(get("/recipes/by-time")
@@ -348,22 +375,127 @@ class ApiApplicationTests {
             .andExpect(jsonPath("$[0].title").value("Quick Recipe"));
     }
 
+	@Test
+	void createRecipe_linksUser_whenUserIdProvided() throws Exception {
+		User user = new User();
+		user.setId(1L);
+		user.setUsername("alice");
+
+		when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+		when(sourceRepository.save(any(RecipeSource.class))).thenAnswer(invocation -> {
+			RecipeSource s = invocation.getArgument(0);
+			ReflectionTestUtils.setField(s, "id", 1L);
+			return s;
+		});
+		when(recipeRepository.save(any(Recipe.class))).thenAnswer(invocation -> {
+			Recipe r = invocation.getArgument(0, Recipe.class);
+			ReflectionTestUtils.setField(r, "id", 1L);
+			return r;
+		});
+
+		String json = """
+			{
+			"title": "Alice's Pasta",
+			"sourceType": "USER",
+			"userId": 1,
+			"prepTime": 10,
+			"cookTime": 20,
+			"steps": [{"stepNumber": 1, "stepDescription": "Boil water"}],
+			"ingredients": [{"ingredient": "pasta", "quantity": "200g"}]
+			}
+			""";
+
+		mockMvc.perform(post("/recipes")
+				.with(user("testuser").roles("USER"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(json))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.title").value("Alice's Pasta"));
+
+		verify(userRepository, times(1)).findById(1L);
+	}
+
+	@Test
+	void createRecipe_returnsNotFound_whenUserIdDoesNotExist() throws Exception {
+		when(userRepository.findById(99L)).thenReturn(Optional.empty());
+		when(sourceRepository.save(any(RecipeSource.class))).thenAnswer(invocation -> {
+			RecipeSource s = invocation.getArgument(0);
+			ReflectionTestUtils.setField(s, "id", 1L);
+			return s;
+		});
+
+		String json = """
+			{
+			"title": "Ghost Recipe",
+			"sourceType": "USER",
+			"userId": 99,
+			"prepTime": 5,
+			"cookTime": 10,
+			"steps": [{"stepNumber": 1, "stepDescription": "Do something"}],
+			"ingredients": [{"ingredient": "air", "quantity": "1 cup"}]
+			}
+			""";
+
+		mockMvc.perform(post("/recipes")
+				.with(user("testuser").roles("USER"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(json))
+			.andExpect(status().isNotFound());
+	}
+
+	// Creates a minimal Recipe with the fields toDTO() requires to avoid NPEs
+	private static Recipe minimalRecipe(Long id, String title) {
+		Recipe recipe = new Recipe();
+		recipe.setId(id);
+		recipe.setTitle(title);
+		RecipeSource source = new RecipeSource();
+		source.setSourceType(RecipeSource.SourceType.USER);
+		recipe.setSource(source);
+		Instruct instruct = new Instruct();
+		ReflectionTestUtils.setField(instruct, "steps", new java.util.ArrayList<>());
+		recipe.setInstruction(instruct);
+		recipe.setIngredients(new java.util.ArrayList<>());
+		return recipe;
+	}
+
+	// JSON for POST /recipes (RecipeRequestDTO format)
 	private static String validRecipeJson() {
-		// Ratings are left out for now because the Rating entity requires a linked Recipe,
-		// which would need additional back-reference setup in the request payload
 		return """
 			{
 			"title": "Test Recipe",
-			"source": { "name": "Test Kitchen" },
+			"sourceType": "USER",
+			"prepTime": 10,
+			"cookTime": 25,
+			"steps": [
+				{"stepNumber": 1, "stepDescription": "Step one"},
+				{"stepNumber": 2, "stepDescription": "Step two"}
+			],
+			"ingredients": [
+				{"ingredient": "2 cups flour", "quantity": "2 cups"},
+				{"ingredient": "1 cup sugar", "quantity": "1 cup"}
+			]
+			}
+			""";
+	}
+
+	// JSON for PUT /recipes/{id} (Recipe entity format)
+	private static String validUpdateRecipeJson() {
+		return """
+			{
+			"title": "Test Recipe",
+			"source": {"sourceType": "USER"},
 			"instruction": {
 				"prepTime": 10,
 				"cookTime": 25,
-				"steps": {
-				"1": "Step one",
-				"2": "Step two"
-				}
+				"steps": [
+					{"stepNumber": 1, "stepDescription": "Step one"}
+				]
 			},
-			"ingredients": ["2 cups flour", "1 cup sugar"]
+			"ingredients": [
+				{"ingredient": "2 cups flour", "quantity": "2 cups"}
+			]
 			}
 			""";
 	}

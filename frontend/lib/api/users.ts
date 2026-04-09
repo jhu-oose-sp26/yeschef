@@ -1,5 +1,5 @@
 import { usersUrl, savedUrl } from '@/constants/api';
-import type { User, HasSaved } from './types';
+import type { User, HasSaved, Recipe } from './types';
 
 export type { User, HasSaved } from './types';
 
@@ -37,4 +37,48 @@ export async function getSavedRecipes(userId: number): Promise<HasSaved[]> {
     headers: { Accept: 'application/json' },
   });
   return handleResponse<HasSaved[]>(res);
+}
+
+/** GET /users/{id}/friends - fetch friend usernames for a user. */
+export async function getFriends(userId: number): Promise<string[]> {
+  const res = await fetch(usersUrl(`/${userId}/friends`), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+  return handleResponse<string[]>(res);
+}
+
+/** GET /users/{id}/friends/recipes - fetch recipes created by a user's friends. */
+export async function getFriendsRecipes(userId: number): Promise<Recipe[]> {
+  const res = await fetch(usersUrl(`/${userId}/friends/recipes`), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+  return handleResponse<Recipe[]>(res);
+}
+
+/** GET /users/{id}/recipes - fetch recipes created by a user. */
+export async function getUserRecipes(userId: number): Promise<Recipe[]> {
+  const res = await fetch(usersUrl(`/${userId}/recipes`), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+  return handleResponse<Recipe[]>(res);
+}
+
+/** POST /users/{userId}/saved/{recipeId} - save a recipe for a user. */
+export async function saveRecipe(userId: number, recipeId: number): Promise<HasSaved> {
+  const res = await fetch(savedUrl(userId, `/${recipeId}`), {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  });
+  return handleResponse<HasSaved>(res);
+}
+
+/** DELETE /users/{userId}/saved/{recipeId} - unsave a recipe for a user. */
+export async function unsaveRecipe(userId: number, recipeId: number): Promise<void> {
+  const res = await fetch(savedUrl(userId, `/${recipeId}`), {
+    method: 'DELETE',
+  });
+  return handleResponse<void>(res);
 }

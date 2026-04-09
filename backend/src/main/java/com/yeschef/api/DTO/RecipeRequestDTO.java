@@ -8,6 +8,7 @@ public class RecipeRequestDTO {
 
     private String title;
     private String sourceType;
+    private Long userId;
     private int prepTime;
     private int cookTime;
     private List<InstructionStepDTO> steps;
@@ -34,6 +35,7 @@ public class RecipeRequestDTO {
     public String getTitle() { return title; }
     //public Long getSourceId() { return sourceId; }
     public String getSourceType() { return sourceType; }
+    public Long getUserId() { return userId; }
     public int getPrepTime() { return prepTime; }
     public int getCookTime() { return cookTime; }
     public List<InstructionStepDTO> getSteps() { return steps; }
@@ -42,6 +44,7 @@ public class RecipeRequestDTO {
     public void setTitle(String title) { this.title = title; }
     //public void setSourceId(Long sourceId) { this.sourceId = sourceId; }
     public void setSourceType(String sourceType) { this.sourceType = sourceType; }
+    public void setUserId(Long userId) { this.userId = userId; }
     public void setPrepTime(int prepTime) { this.prepTime = prepTime; }
     public void setCookTime(int cookTime) { this.cookTime = cookTime; }
     public void setSteps(List<InstructionStepDTO> instructions) { this.steps = instructions; }
