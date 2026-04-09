@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.yeschef.api.model.HasLiked;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.model.Friendship;
@@ -174,6 +175,25 @@ public class UserController {
             return ResponseEntity.ok(new java.util.ArrayList<>());
         }
         return ResponseEntity.ok(recipeRepository.findBySourceIn(userSources));
+    }
+
+    // GET: get all recipes liked by a user's friends
+    @GetMapping("/{id}/friends/liked")
+    public ResponseEntity<List<Recipe>> getFriendsLikedRecipes(@PathVariable Long id) {
+        Optional<User> userMaybe = userRepository.findById(id);
+        if (userMaybe.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        User user = userMaybe.get();
+
+        List<Recipe> likedByFriends = user.getFriendshipsSent().stream()
+                .map(Friendship::getFriend)
+                .flatMap(friend -> friend.getLikes().stream())
+                .map(HasLiked::getRecipe)
+                .distinct()
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(likedByFriends);
     }
 
     // GET: get a user's friend's recipes
