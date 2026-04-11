@@ -17,13 +17,6 @@ import type { Recipe } from '@/lib/api/types';
  * Wired to XXX and XXXX APIs. Without auth we use the first user from the API.
  */
 export default function SearchScreen() {
-  /*
-    return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Create</Text>
-    </View>
-  );
-  */
 
   const cardBg = useThemeColor({}, 'card');
   const cardBorder = useThemeColor({}, 'cardBorder');
@@ -68,13 +61,11 @@ export default function SearchScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       
-      {/* HEADER */}
       <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
         <ThemedText type="title" style={styles.title}>
           Search
         </ThemedText>
 
-        {/* SEARCH BAR */}
         <View style={[styles.searchBar, { borderColor: cardBorder }]}>
           <IconSymbol name="magnifyingglass" size={18} color="#888" />
 
@@ -87,34 +78,47 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {/* BROWSE SECTION */}
       <View style={styles.section}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Browse by
         </ThemedText>
 
-        <BrowseCard label="Ingredient" accent={accent} cardBg={cardBg} cardBorder={cardBorder} />
-        <BrowseCard label="Cook Time" accent={accent} cardBg={cardBg} cardBorder={cardBorder} />
+       <BrowseCard
+          label="Ingredient"
+          onPress={() => router.push('../browse/ingredient')}
+          accent={accent}
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+        />
+        <BrowseCard
+          label="Cook Time"
+          onPress={() => router.push('../browse/time')}
+          accent={accent}
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+        />
       </View>
     </ScrollView>
   );
 }
 
-/* ---------- Reusable Browse Card ---------- */
 
 function BrowseCard({
   label,
+  onPress,
   accent,
   cardBg,
   cardBorder,
 }: {
   label: string;
+  onPress: () => void;
   accent: string;
   cardBg: string;
   cardBorder: string;
 }) {
   return (
     <Pressable
+      onPress={onPress}
       style={({ pressed }) => [
         styles.browseCard,
         {
