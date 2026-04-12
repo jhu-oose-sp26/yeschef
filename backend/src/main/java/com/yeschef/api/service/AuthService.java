@@ -1,22 +1,29 @@
 package com.yeschef.api.service;
 
-import com.yeschef.api.DTO.AuthRequest;
-import com.yeschef.api.DTO.AuthResponse;
-import com.yeschef.api.model.User;
-import com.yeschef.api.repository.UserRepository;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import com.yeschef.api.DTO.AuthRequest;
+import com.yeschef.api.DTO.AuthResponse;
+import com.yeschef.api.model.User;
+import com.yeschef.api.repository.UserRepository;
 
 @Service
 public class AuthService {
@@ -30,8 +37,11 @@ public class AuthService {
     private String supabaseAnonKey;
 
     private final UserRepository userRepository;
-
     private final RestTemplate restTemplate = createRestTemplate();
+
+    public AuthService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     private static RestTemplate createRestTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -40,70 +50,49 @@ public class AuthService {
         return new RestTemplate(factory);
     }
 
-    public AuthService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-
-    // Registers a new user with Supabase Auth and creates a matching local user row.
-    // Always returns without a session — email confirmation is required before the user can log in.
     public void signup(AuthRequest request) {
-        HttpHeaders headers = buildHeaders();
+        String requestedUsername = normalizedUsername(request.getUsername());
+        if (requestedUsername == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username is required.");
+        }
+        if (userRepository.findByUsername(requestedUsername).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already in use.");
+        }
 
-        Map<String, String> body = new HashMap<>();
+        Map<String, Object> body = new HashMap<>();
         body.put("email", request.getEmail());
         body.put("password", request.getPassword());
+        body.put("data", Map.of("username", requestedUsername));
 
         try {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     supabaseUrl + "/auth/v1/signup",
                     HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
+                    new HttpEntity<>(body, buildHeaders()),
                     new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
             Map<String, Object> responseBody = response.getBody();
-
             if (responseBody == null) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                         "Supabase returned null response body");
             }
 
-            UUID supabaseId = null;
-
-            // Try to extract id from "user" node
             @SuppressWarnings("unchecked")
             Map<String, Object> userNode = (Map<String, Object>) responseBody.get("user");
-            if (userNode != null && userNode.get("id") instanceof String) {
-                supabaseId = UUID.fromString((String) userNode.get("id"));
-            }
-
-            // If not found, try top-level "id"
-            if (supabaseId == null && responseBody.get("id") instanceof String) {
-                supabaseId = UUID.fromString((String) responseBody.get("id"));
-            }
-
-            if (supabaseId == null) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Could not extract user id from Supabase response");
-            }
-
-            // Create the local user profile immediately via JPA.
-            // Do not rely on a Supabase JWT/session here, because confirm-email mode
-            // returns user info without a session.
-            if (!userRepository.existsBySupabaseId(supabaseId)) {
-                User newUser = new User();
-                newUser.setSupabaseId(supabaseId);
-                newUser.setUsername(request.getUsername());
-                userRepository.save(newUser);
-            }
+            UUID supabaseId = extractSupabaseId(userNode, responseBody);
+            ensureLocalUser(supabaseId, userNode, request.getEmail(), requestedUsername, false);
 
         } catch (HttpClientErrorException e) {
             log.error("Supabase signup error: {}", e.getResponseBodyAsString());
+            String errorBody = e.getResponseBodyAsString();
+            if (errorBody.contains("User already registered") || errorBody.contains("already been registered")) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already in use.");
+            }
             if (e.getStatusCode().value() == 429) {
                 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                         "Too many signup attempts. Please wait before trying again.");
             }
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Signup failed. Please try again.");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Signup failed. Please try again.");
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
@@ -113,10 +102,7 @@ public class AuthService {
         }
     }
 
-    // Authenticates an existing user with Supabase Auth and returns their local profile.
     public AuthResponse login(AuthRequest request) {
-        HttpHeaders headers = buildHeaders();
-
         Map<String, String> body = new HashMap<>();
         body.put("email", request.getEmail());
         body.put("password", request.getPassword());
@@ -125,25 +111,27 @@ public class AuthService {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     supabaseUrl + "/auth/v1/token?grant_type=password",
                     HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
+                    new HttpEntity<>(body, buildHeaders()),
                     new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
             Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Supabase returned null response body");
+            }
+
             String accessToken = (String) responseBody.get("access_token");
             String refreshToken = (String) responseBody.get("refresh_token");
             @SuppressWarnings("unchecked")
-            UUID supabaseId = UUID.fromString((String) ((Map<String, Object>) responseBody.get("user")).get("id"));
-
-            User user = userRepository.findBySupabaseId(supabaseId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "No local user found for this Supabase account"));
+            Map<String, Object> userNode = (Map<String, Object>) responseBody.get("user");
+            UUID supabaseId = extractSupabaseId(userNode, responseBody);
+            User user = ensureLocalUser(supabaseId, userNode, request.getEmail(), request.getUsername(), true);
 
             return new AuthResponse(accessToken, refreshToken, user);
 
         } catch (HttpClientErrorException e) {
             log.error("Supabase login error: {}", e.getResponseBodyAsString());
             String errorBody = e.getResponseBodyAsString();
-            // Supabase returns 400 with error_code "email_not_confirmed" for unconfirmed accounts
             if (errorBody.contains("email_not_confirmed") || errorBody.contains("Email not confirmed")) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Email not confirmed. Please check your inbox.");
@@ -152,8 +140,11 @@ public class AuthService {
                 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                         "Too many login attempts. Please wait before trying again.");
             }
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Invalid email or password.");
+            if (e.getStatusCode().value() >= 500) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "Authentication provider unavailable. Please try again.");
+            }
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
@@ -163,10 +154,7 @@ public class AuthService {
         }
     }
 
-    // Exchanges a Supabase refresh token for a new access + refresh token pair.
     public AuthResponse refresh(String refreshToken) {
-        HttpHeaders headers = buildHeaders();
-
         Map<String, String> body = new HashMap<>();
         body.put("refresh_token", refreshToken);
 
@@ -174,7 +162,7 @@ public class AuthService {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     supabaseUrl + "/auth/v1/token?grant_type=refresh_token",
                     HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
+                    new HttpEntity<>(body, buildHeaders()),
                     new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
             Map<String, Object> responseBody = response.getBody();
@@ -182,19 +170,13 @@ public class AuthService {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                         "Supabase returned null response body");
             }
+
             String newAccessToken = (String) responseBody.get("access_token");
             String newRefreshToken = (String) responseBody.get("refresh_token");
             @SuppressWarnings("unchecked")
             Map<String, Object> userNode = (Map<String, Object>) responseBody.get("user");
-            if (userNode == null || !(userNode.get("id") instanceof String)) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Could not extract user id from Supabase refresh response");
-            }
-            UUID supabaseId = UUID.fromString((String) userNode.get("id"));
-
-            User user = userRepository.findBySupabaseId(supabaseId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "No local user found for this Supabase account"));
+            UUID supabaseId = extractSupabaseId(userNode, responseBody);
+            User user = ensureLocalUser(supabaseId, userNode, null, null, true);
 
             return new AuthResponse(newAccessToken, newRefreshToken, user);
 
@@ -211,10 +193,7 @@ public class AuthService {
         }
     }
 
-    // Asks Supabase to resend the signup confirmation email.
     public void resendConfirmation(String email) {
-        HttpHeaders headers = buildHeaders();
-
         Map<String, String> body = new HashMap<>();
         body.put("type", "signup");
         body.put("email", email);
@@ -223,7 +202,7 @@ public class AuthService {
             restTemplate.exchange(
                     supabaseUrl + "/auth/v1/resend",
                     HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
+                    new HttpEntity<>(body, buildHeaders()),
                     new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
         } catch (HttpClientErrorException e) {
             log.error("Supabase resend confirmation error: {}", e.getResponseBodyAsString());
@@ -246,5 +225,97 @@ public class AuthService {
         headers.set("apikey", supabaseAnonKey);
         headers.setBearerAuth(supabaseAnonKey);
         return headers;
+    }
+
+    private UUID extractSupabaseId(Map<String, Object> userNode, Map<String, Object> responseBody) {
+        if (userNode != null && userNode.get("id") instanceof String userId) {
+            return UUID.fromString(userId);
+        }
+        if (responseBody.get("id") instanceof String topLevelId) {
+            return UUID.fromString(topLevelId);
+        }
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Could not extract user id from Supabase response");
+    }
+
+    private User ensureLocalUser(UUID supabaseId,
+                                 Map<String, Object> userNode,
+                                 String email,
+                                 String requestedUsername,
+                                 boolean allowGeneratedUsername) {
+        return userRepository.findBySupabaseId(supabaseId).orElseGet(() -> {
+            String preferredUsername = firstNonBlank(
+                    normalizedUsername(requestedUsername),
+                    normalizedUsername(extractUserMetadataUsername(userNode)),
+                    usernameFromEmail(email));
+
+            if (preferredUsername == null) {
+                preferredUsername = "chef-" + supabaseId.toString().substring(0, 8);
+            }
+
+            User newUser = new User();
+            newUser.setSupabaseId(supabaseId);
+            newUser.setUsername(resolveAvailableUsername(preferredUsername, supabaseId, allowGeneratedUsername));
+            try {
+                return userRepository.save(newUser);
+            } catch (DataIntegrityViolationException ex) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Username already in use. Please choose a different username.");
+            }
+        });
+    }
+
+    private String resolveAvailableUsername(String preferredUsername, UUID supabaseId, boolean allowGeneratedUsername) {
+        if (userRepository.findByUsername(preferredUsername).isEmpty()) {
+            return preferredUsername;
+        }
+        if (!allowGeneratedUsername) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already in use.");
+        }
+
+        String candidate = preferredUsername + "-" + supabaseId.toString().substring(0, 8);
+        if (userRepository.findByUsername(candidate).isEmpty()) {
+            return candidate;
+        }
+
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Could not create a local profile for this account.");
+    }
+
+    private String extractUserMetadataUsername(Map<String, Object> userNode) {
+        if (userNode == null) {
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userMetadata = (Map<String, Object>) userNode.get("user_metadata");
+        if (userMetadata == null) {
+            return null;
+        }
+        Object username = userMetadata.get("username");
+        return username instanceof String ? ((String) username).trim() : null;
+    }
+
+    private String usernameFromEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return null;
+        }
+        return email.substring(0, email.indexOf('@')).trim().toLowerCase();
+    }
+
+    private String normalizedUsername(String username) {
+        if (username == null) {
+            return null;
+        }
+        String trimmed = username.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 }

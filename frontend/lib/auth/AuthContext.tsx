@@ -54,6 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen for 401 responses from any API call.
   // Try a silent token refresh first; only clear the session if that also fails.
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
     async function handleUnauthorized() {
       const stored = await storage.getItem(REFRESH_KEY).catch(() => null);
       if (stored) {

@@ -63,7 +63,7 @@ export default function MyPostsScreen() {
       ) : recipes.length === 0 ? (
         <View style={styles.centered}>
           <IconSymbol name="fork.knife" size={48} color={PAPRIKA} />
-          <ThemedText style={styles.emptyText}>You haven't posted any recipes yet.</ThemedText>
+          <ThemedText style={styles.emptyText}>You haven&apos;t posted any recipes yet.</ThemedText>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>

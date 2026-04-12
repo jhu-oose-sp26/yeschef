@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -23,6 +22,7 @@ import com.yeschef.api.model.Recipe;
 import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.repository.FriendshipRepository;
 import com.yeschef.api.repository.RecipeRepository;
+import com.yeschef.api.service.AuthenticatedUserService;
 
 // This controller exposes REST endpoints related to users.
 @RestController
@@ -32,11 +32,16 @@ public class UserController {
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
     private final RecipeRepository recipeRepository;
+    private final AuthenticatedUserService authenticatedUserService;
 
-    public UserController(UserRepository userRepository, FriendshipRepository friendshipRepository, RecipeRepository recipeRepository) {
+    public UserController(UserRepository userRepository,
+                          FriendshipRepository friendshipRepository,
+                          RecipeRepository recipeRepository,
+                          AuthenticatedUserService authenticatedUserService) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.recipeRepository = recipeRepository;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     // Handle GET requests to /users
@@ -74,13 +79,14 @@ public class UserController {
     // Updates a user's username. Returns 409 Conflict if the new username is already taken.
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User updatedUser) {
+        authenticatedUserService.requireCurrentUser(id);
         Optional<User> userMaybe = userRepository.findById(id);
         if (userMaybe.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
         Optional<User> usernameTaken = userRepository.findByUsername(updatedUser.getUsername());
-        if (usernameTaken.isPresent()) {
+        if (usernameTaken.isPresent() && !usernameTaken.get().getId().equals(id)) {
             return ResponseEntity.status(409).build();
         }
 
@@ -93,6 +99,7 @@ public class UserController {
     // Deletes a user and all their associated likes, saves, and ratings (via cascade).
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        authenticatedUserService.requireCurrentUser(id);
         if (!userRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
@@ -118,6 +125,7 @@ public class UserController {
     // POST: make a new friendship
     @PostMapping("/{id}/friends/{friendId}")
     public ResponseEntity<Void> addFriend(@PathVariable Long id, @PathVariable Long friendId) {
+        authenticatedUserService.requireCurrentUser(id);
         if (id.equals(friendId)) return ResponseEntity.badRequest().build();
 
         Optional<User> selfMaybe = userRepository.findById(id);
@@ -146,6 +154,7 @@ public class UserController {
     // DELETE: delete a friendship
     @DeleteMapping("/{id}/friends/{friendId}")
     public ResponseEntity<Void> removeFriend(@PathVariable Long id, @PathVariable Long friendId) {
+        authenticatedUserService.requireCurrentUser(id);
         Optional<User> selfMaybe = userRepository.findById(id);
         Optional<User> friendMaybe = userRepository.findById(friendId);
 

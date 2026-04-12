@@ -149,9 +149,9 @@ export default function FeedScreen() {
           <IconSymbol name="book.fill" size={48} color={accent} />
         </View>
         <ThemedText type="subtitle" style={styles.emptyTitle}>Feed is empty</ThemedText>
-        <ThemedText style={styles.message}>
-          Your friends ({friendNames.join(', ')}) haven't created any recipes yet.
-        </ThemedText>
+          <ThemedText style={styles.message}>
+            Your friends ({friendNames.join(', ')}) haven&apos;t created any recipes yet.
+          </ThemedText>
       </ThemedView>
     );
   }

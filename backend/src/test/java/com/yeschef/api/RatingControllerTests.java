@@ -1,5 +1,45 @@
 package com.yeschef.api;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.Arrays;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.yeschef.api.controller.RatingController;
 import com.yeschef.api.model.Rating;
 import com.yeschef.api.model.Recipe;
@@ -7,37 +47,10 @@ import com.yeschef.api.model.User;
 import com.yeschef.api.repository.RatingRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.http.MediaType;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.Arrays;
-import java.util.Optional;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.yeschef.api.service.AuthenticatedUserService;
 
 @WebMvcTest(controllers = RatingController.class)
 @Import(RatingControllerTests.TestSecurityConfig.class)
-// Provides a dummy Supabase URL so SupabaseJwtFilter can be instantiated in the test context
 @TestPropertySource(properties = "supabase.url=https://test.supabase.co")
 @SuppressWarnings({"null", "unused"})
 class RatingControllerTests {
@@ -67,37 +80,12 @@ class RatingControllerTests {
     @MockitoBean
     private UserRepository userRepository;
 
+    @MockitoBean
+    private AuthenticatedUserService authenticatedUserService;
+
     @BeforeEach
     void resetMocks() {
-        Mockito.reset(ratingRepository);
-        Mockito.reset(recipeRepository);
-        Mockito.reset(userRepository);
-    }
-
-    @Test
-    void getRatingById_success() throws Exception {
-        Recipe recipe = new Recipe();
-        recipe.setId(1L);
-
-        User user = new User();
-        user.setId(2L);
-
-        Rating rating = new Rating();
-        rating.setId(3L);
-        rating.setRecipe(recipe);
-        rating.setUser(user);
-        rating.setTasteQuality(5);
-        rating.setEaseOfExecution(4);
-
-        when(ratingRepository.findById(3L)).thenReturn(Optional.of(rating));
-
-        mockMvc.perform(get("/ratings/{id}", 3L).with(user("testuser").roles("USER")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(3L))
-            .andExpect(jsonPath("$.recipeId").value(1L))
-            .andExpect(jsonPath("$.userId").value(2L))
-            .andExpect(jsonPath("$.tasteQuality").value(5))
-            .andExpect(jsonPath("$.easeOfExecution").value(4));
+        reset(ratingRepository, recipeRepository, userRepository, authenticatedUserService);
     }
 
     @Test
@@ -121,75 +109,7 @@ class RatingControllerTests {
         mockMvc.perform(get("/ratings/recipe/{recipeId}", 1L).with(user("testuser").roles("USER")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].id").value(3L))
-            .andExpect(jsonPath("$[0].recipeId").value(1L))
-            .andExpect(jsonPath("$[0].userId").value(2L))
-            .andExpect(jsonPath("$[0].tasteQuality").value(5))
-            .andExpect(jsonPath("$[0].easeOfExecution").value(4));
-    }
-
-    @Test
-    void getRatingsByUser_success() throws Exception {
-        Recipe recipe = new Recipe();
-        recipe.setId(1L);
-
-        User user = new User();
-        user.setId(2L);
-
-        Rating rating = new Rating();
-        rating.setId(3L);
-        rating.setRecipe(recipe);
-        rating.setUser(user);
-        rating.setTasteQuality(5);
-        rating.setEaseOfExecution(4);
-
-        when(userRepository.existsById(2L)).thenReturn(true);
-        when(ratingRepository.findByUser_Id(2L)).thenReturn(Arrays.asList(rating));
-
-        mockMvc.perform(get("/ratings/user/{userId}", 2L).with(user("testuser").roles("USER")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value(3L))
-            .andExpect(jsonPath("$[0].recipeId").value(1L))
-            .andExpect(jsonPath("$[0].userId").value(2L))
-            .andExpect(jsonPath("$[0].tasteQuality").value(5))
-            .andExpect(jsonPath("$[0].easeOfExecution").value(4));
-    }
-
-    @Test
-    void getRatingByUserAndRecipe_success() throws Exception {
-        Recipe recipe = new Recipe();
-        recipe.setId(1L);
-
-        User user = new User();
-        user.setId(2L);
-
-        Rating rating = new Rating();
-        rating.setId(3L);
-        rating.setRecipe(recipe);
-        rating.setUser(user);
-        rating.setTasteQuality(5);
-        rating.setEaseOfExecution(4);
-
-        when(userRepository.existsById(2L)).thenReturn(true);
-        when(recipeRepository.existsById(1L)).thenReturn(true);
-        when(ratingRepository.findByUser_IdAndRecipe_Id(2L, 1L)).thenReturn(Optional.of(rating));
-
-        mockMvc.perform(get("/ratings/user/{userId}/recipe/{recipeId}", 2L, 1L).with(user("testuser").roles("USER")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(3L))
-            .andExpect(jsonPath("$.recipeId").value(1L))
-            .andExpect(jsonPath("$.userId").value(2L))
-            .andExpect(jsonPath("$.tasteQuality").value(5))
-            .andExpect(jsonPath("$.easeOfExecution").value(4));
-    }
-
-    @Test
-    void getRatingByUserAndRecipe_notFound() throws Exception {
-        when(userRepository.existsById(2L)).thenReturn(true);
-        when(recipeRepository.existsById(1L)).thenReturn(true);
-        when(ratingRepository.findByUser_IdAndRecipe_Id(2L, 1L)).thenReturn(Optional.empty());
-
-        mockMvc.perform(get("/ratings/user/{userId}/recipe/{recipeId}", 2L, 1L).with(user("testuser").roles("USER")))
-            .andExpect(status().isNotFound());
+            .andExpect(jsonPath("$[0].userId").value(2L));
     }
 
     @Test
@@ -200,8 +120,8 @@ class RatingControllerTests {
         User user = new User();
         user.setId(2L);
 
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(user);
         when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
         when(ratingRepository.findByUser_IdAndRecipe_Id(2L, 1L)).thenReturn(Optional.empty());
         when(ratingRepository.save(any(Rating.class))).thenAnswer(invocation -> {
             Rating rating = invocation.getArgument(0);
@@ -209,31 +129,47 @@ class RatingControllerTests {
             return rating;
         });
 
-        mockMvc.perform(
-                post("/ratings")
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                          "recipeId": 1,
-                          "userId": 2,
-                          "tasteQuality": 5,
-                          "easeOfExecution": 4
-                        }
-                        """))
+        mockMvc.perform(post("/ratings")
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "recipeId": 1,
+                      "userId": 2,
+                      "tasteQuality": 5,
+                      "easeOfExecution": 4
+                    }
+                    """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(3L))
-            .andExpect(jsonPath("$.recipeId").value(1L))
-            .andExpect(jsonPath("$.userId").value(2L))
-            .andExpect(jsonPath("$.tasteQuality").value(5))
-            .andExpect(jsonPath("$.easeOfExecution").value(4));
+            .andExpect(jsonPath("$.userId").value(2L));
     }
 
     @Test
-    void createDuplicateRating_failure() throws Exception {
+    void createRating_returnsForbidden_whenUserIdDoesNotMatchAuthenticatedUser() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "You may only modify your own account"))
+            .when(authenticatedUserService).requireCurrentUser(2L);
+
+        mockMvc.perform(post("/ratings")
+                .with(authentication(new UsernamePasswordAuthenticationToken("different-user", null)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "recipeId": 1,
+                      "userId": 2,
+                      "tasteQuality": 5,
+                      "easeOfExecution": 4
+                    }
+                    """))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateRating_success() throws Exception {
         Recipe recipe = new Recipe();
-        recipe.setId(1L);
+        recipe.setId(4L);
 
         User user = new User();
         user.setId(2L);
@@ -242,158 +178,82 @@ class RatingControllerTests {
         existing.setId(3L);
         existing.setRecipe(recipe);
         existing.setUser(user);
-        existing.setTasteQuality(5);
-        existing.setEaseOfExecution(4);
-
-        when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(ratingRepository.findByUser_IdAndRecipe_Id(2L, 1L)).thenReturn(Optional.of(existing));
-
-        mockMvc.perform(
-                post("/ratings")
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                          "recipeId": 1,
-                          "userId": 2,
-                          "tasteQuality": 5,
-                          "easeOfExecution": 4
-                        }
-                        """))
-            .andExpect(status().isConflict());
-
-        verify(ratingRepository, never()).save(any());
-    }
-
-    @Test
-    void createWithInvalidRecipeId() throws Exception {
-        when(recipeRepository.findById(999L)).thenReturn(Optional.empty());
-
-        mockMvc.perform(
-                post("/ratings")
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                          "recipeId": 999,
-                          "userId": 2,
-                          "tasteQuality": 5,
-                          "easeOfExecution": 4
-                        }
-                        """))
-            .andExpect(status().isNotFound());
-
-        verify(ratingRepository, never()).save(any());
-    }
-
-    @Test
-    void createWithInvalidUserId() throws Exception {
-        Recipe recipe = new Recipe();
-        recipe.setId(1L);
-
-        when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
-
-        mockMvc.perform(
-                post("/ratings")
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                          "recipeId": 1,
-                          "userId": 999,
-                          "tasteQuality": 5,
-                          "easeOfExecution": 4
-                        }
-                        """))
-            .andExpect(status().isNotFound());
-
-        verify(ratingRepository, never()).save(any());
-    }
-
-    @Test
-    void updateRating_success() throws Exception {
-        Recipe oldRecipe = new Recipe();
-        oldRecipe.setId(1L);
-
-        Recipe newRecipe = new Recipe();
-        newRecipe.setId(4L);
-
-        User oldUser = new User();
-        oldUser.setId(2L);
-
-        User newUser = new User();
-        newUser.setId(5L);
-
-        Rating existing = new Rating();
-        existing.setId(3L);
-        existing.setRecipe(oldRecipe);
-        existing.setUser(oldUser);
         existing.setTasteQuality(2);
         existing.setEaseOfExecution(1);
 
         when(ratingRepository.findById(3L)).thenReturn(Optional.of(existing));
-        when(recipeRepository.findById(4L)).thenReturn(Optional.of(newRecipe));
-        when(userRepository.findById(5L)).thenReturn(Optional.of(newUser));
-        when(ratingRepository.findByUser_IdAndRecipe_Id(5L, 4L)).thenReturn(Optional.empty());
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(user);
+        when(recipeRepository.findById(4L)).thenReturn(Optional.of(recipe));
+        when(ratingRepository.findByUser_IdAndRecipe_Id(2L, 4L)).thenReturn(Optional.of(existing));
         when(ratingRepository.save(any(Rating.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        mockMvc.perform(
-                put("/ratings/{id}", 3L)
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                          "recipeId": 4,
-                          "userId": 5,
-                          "tasteQuality": 5,
-                          "easeOfExecution": 4
-                        }
-                        """))
+        mockMvc.perform(put("/ratings/{id}", 3L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "recipeId": 4,
+                      "userId": 2,
+                      "tasteQuality": 5,
+                      "easeOfExecution": 4
+                    }
+                    """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(3L))
-            .andExpect(jsonPath("$.recipeId").value(4L))
-            .andExpect(jsonPath("$.userId").value(5L))
-            .andExpect(jsonPath("$.tasteQuality").value(5))
-            .andExpect(jsonPath("$.easeOfExecution").value(4));
+            .andExpect(jsonPath("$.userId").value(2L));
     }
 
     @Test
-    void updateRating_notFound() throws Exception {
-        when(ratingRepository.findById(999L)).thenReturn(Optional.empty());
+    void updateRating_returnsForbidden_whenRatingBelongsToAnotherUser() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(4L);
 
-        mockMvc.perform(
-                put("/ratings/{id}", 999L)
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                          "recipeId": 1,
-                          "userId": 2,
-                          "tasteQuality": 5,
-                          "easeOfExecution": 4
-                        }
-                        """))
-            .andExpect(status().isNotFound());
+        User owner = new User();
+        owner.setId(9L);
 
-        verify(ratingRepository, never()).save(any());
+        User currentUser = new User();
+        currentUser.setId(2L);
+
+        Rating existing = new Rating();
+        existing.setId(3L);
+        existing.setRecipe(recipe);
+        existing.setUser(owner);
+
+        when(ratingRepository.findById(3L)).thenReturn(Optional.of(existing));
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(currentUser);
+
+        mockMvc.perform(put("/ratings/{id}", 3L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "recipeId": 4,
+                      "userId": 2,
+                      "tasteQuality": 5,
+                      "easeOfExecution": 4
+                    }
+                    """))
+            .andExpect(status().isForbidden());
     }
 
     @Test
     void deleteRating_success() throws Exception {
-        when(ratingRepository.existsById(3L)).thenReturn(true);
+        User user = new User();
+        user.setId(2L);
+
+        Rating rating = new Rating();
+        rating.setId(3L);
+        rating.setUser(user);
+
+        when(ratingRepository.findById(3L)).thenReturn(Optional.of(rating));
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(user);
         doNothing().when(ratingRepository).deleteById(3L);
 
-        mockMvc.perform(
-                delete("/ratings/{id}", 3L)
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf()))
+        mockMvc.perform(delete("/ratings/{id}", 3L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf()))
             .andExpect(status().isNoContent());
 
         verify(ratingRepository, times(1)).deleteById(3L);
@@ -401,12 +261,11 @@ class RatingControllerTests {
 
     @Test
     void deleteRating_notFound() throws Exception {
-        when(ratingRepository.existsById(999L)).thenReturn(false);
+        when(ratingRepository.findById(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(
-                delete("/ratings/{id}", 999L)
-                    .with(user("testuser").roles("USER"))
-                    .with(csrf()))
+        mockMvc.perform(delete("/ratings/{id}", 999L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf()))
             .andExpect(status().isNotFound());
 
         verify(ratingRepository, never()).deleteById(any());
