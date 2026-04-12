@@ -39,12 +39,21 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     List<Recipe> findByMaxTotalTime(@Param("maxTime") int maxTime);
 
     // Get all recipes that contain a certain ingredient
+    /*
     @Query("""
     SELECT DISTINCT r
     FROM Recipe r
     JOIN r.ingredients i
     WHERE LOWER(i.ingredient) LIKE LOWER(CONCAT('%', :ingredient, '%'))
     """)
+    List<Recipe> findByIngredient(@Param("ingredient") String ingredient);
+    */
+   @Query(value = """
+    SELECT DISTINCT r.*
+    FROM recipes r
+    JOIN ingredients i ON r.id = i.recipe_id
+    WHERE LOWER(i.ingredient) ~ ('\\y' || LOWER(:ingredient) || '\\y')
+    """, nativeQuery = true)
     List<Recipe> findByIngredient(@Param("ingredient") String ingredient);
 
     @Query("""

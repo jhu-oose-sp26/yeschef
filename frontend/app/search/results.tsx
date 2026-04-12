@@ -51,7 +51,7 @@ export default function SearchResultsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
         {/* BACK BUTTON */}
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable onPress={() => router.replace('/browse')} style={styles.backButton}>
           <IconSymbol name="chevron.left" size={22} color="#333" />
         </Pressable>
 
