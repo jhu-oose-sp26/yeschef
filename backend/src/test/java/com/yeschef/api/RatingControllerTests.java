@@ -15,9 +15,10 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -36,6 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = RatingController.class)
 @Import(RatingControllerTests.TestSecurityConfig.class)
+// Provides a dummy Supabase URL so SupabaseJwtFilter can be instantiated in the test context
+@TestPropertySource(properties = "supabase.url=https://test.supabase.co")
+@SuppressWarnings({"null", "unused"})
 class RatingControllerTests {
 
     @TestConfiguration
@@ -54,13 +58,13 @@ class RatingControllerTests {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private RatingRepository ratingRepository;
 
-    @MockBean
+    @MockitoBean
     private RecipeRepository recipeRepository;
 
-    @MockBean
+    @MockitoBean
     private UserRepository userRepository;
 
     @BeforeEach

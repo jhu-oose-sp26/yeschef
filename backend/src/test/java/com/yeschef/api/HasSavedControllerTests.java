@@ -23,6 +23,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -41,6 +42,8 @@ import com.yeschef.api.repository.UserRepository;
 
 @WebMvcTest(controllers = HasSavedController.class)
 @Import(HasSavedControllerTests.TestSecurityConfig.class)
+// Provides a dummy Supabase URL so SupabaseJwtFilter can be instantiated in the test context
+@TestPropertySource(properties = "supabase.url=https://test.supabase.co")
 @SuppressWarnings({"null", "unused"})
 class HasSavedControllerTests {
 

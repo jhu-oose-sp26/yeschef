@@ -1,22 +1,14 @@
 import { ratingsUrl } from '@/constants/api';
+import { authHeaders, handleResponse } from './client';
 import type { RatingRequest, RatingResponse } from './types';
 
 export type { RatingRequest, RatingResponse } from './types';
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text || res.statusText}`);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
 
 /** GET /ratings/recipe/{recipeId} */
 export async function getRatingsForRecipe(recipeId: number): Promise<RatingResponse[]> {
   const res = await fetch(ratingsUrl(`/recipe/${recipeId}`), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<RatingResponse[]>(res);
 }
@@ -28,7 +20,7 @@ export async function getUserRatingForRecipe(
 ): Promise<RatingResponse | null> {
   const res = await fetch(ratingsUrl(`/user/${userId}/recipe/${recipeId}`), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   if (res.status === 404) return null;
   return handleResponse<RatingResponse>(res);
@@ -38,7 +30,7 @@ export async function getUserRatingForRecipe(
 export async function createRating(body: RatingRequest): Promise<RatingResponse> {
   const res = await fetch(ratingsUrl(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
   return handleResponse<RatingResponse>(res);
@@ -51,7 +43,7 @@ export async function updateRating(
 ): Promise<RatingResponse> {
   const res = await fetch(ratingsUrl(`/${ratingId}`), {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
   return handleResponse<RatingResponse>(res);

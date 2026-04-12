@@ -16,20 +16,20 @@ import { Fonts } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
-import { getSavedRecipes, getUsers, getUserRecipes } from '@/lib/api/users';
-import type { User } from '@/lib/api/users';
+import { getSavedRecipes, getUserRecipes } from '@/lib/api/users';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 /**
  * Profile screen: "As a reflective user, I want to see my own profile so I can keep track
  * of my stats and my own digital cookbook."
- * Wired to User and hasSaved APIs. Without auth we use the first user from the API.
+ * Wired to User and hasSaved APIs using the currently authenticated user.
  */
 export default function ProfileScreen() {
   const cardBg = useThemeColor({}, 'card');
   const cardBorder = useThemeColor({}, 'cardBorder');
   const accent = useThemeColor({}, 'accent');
+  const { user: authUser, logout } = useAuth();
 
-  const [user, setUser] = useState<User | null>(null);
   const [savedCount, setSavedCount] = useState<number>(0);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
   const [createdRecipes, setCreatedRecipes] = useState<Recipe[]>([]);
@@ -37,23 +37,13 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
+    if (!authUser) return;
     setLoading(true);
     setError(null);
     try {
-      const users = await getUsers();
-      const currentUser = users[0] ?? null;
-      setUser(currentUser);
-
-      if (!currentUser) {
-        setSavedCount(0);
-        setSavedRecipes([]);
-        setCreatedRecipes([]);
-        return;
-      }
-
       const [saved, created] = await Promise.all([
-        getSavedRecipes(currentUser.id),
-        getUserRecipes(currentUser.id),
+        getSavedRecipes(authUser.id),
+        getUserRecipes(authUser.id),
       ]);
 
       setSavedCount(saved.length);
@@ -67,7 +57,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authUser]);
 
   useEffect(() => {
     loadProfile();
@@ -96,14 +86,26 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <ThemedText
-          type="title"
-          style={[styles.profileTitle, { fontFamily: Fonts.rounded }]}>
-          My Profile
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>
-          {user ? `@${user.username}` : 'No user yet — create one via the API'}
-        </ThemedText>
+        <View style={styles.headerRow}>
+          <View>
+            <ThemedText
+              type="title"
+              style={[styles.profileTitle, { fontFamily: Fonts.rounded }]}>
+              My Profile
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              {authUser ? `@${authUser.username}` : ''}
+            </ThemedText>
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.logoutBtn,
+              { borderColor: cardBorder, opacity: pressed ? 0.65 : 1 },
+            ]}
+            onPress={logout}>
+            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={accent} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -124,16 +126,7 @@ export default function ProfileScreen() {
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           My saved recipes
         </ThemedText>
-        {!user ? (
-          <View style={[styles.cookbookPlaceholder, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <View style={[styles.cookbookIconWrap, { backgroundColor: accent + '18' }]}>
-              <IconSymbol name="book.closed.fill" size={40} color={accent} />
-            </View>
-            <ThemedText style={styles.cookbookMessage}>
-              Create a user via the API to see your saved recipes here.
-            </ThemedText>
-          </View>
-        ) : savedRecipes.length === 0 ? (
+        {savedRecipes.length === 0 ? (
           <View style={[styles.cookbookPlaceholder, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={[styles.cookbookIconWrap, { backgroundColor: accent + '18' }]}>
               <IconSymbol name="book.closed.fill" size={40} color={accent} />
@@ -269,12 +262,22 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
   profileTitle: {
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 15,
     opacity: 0.8,
+  },
+  logoutBtn: {
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   section: {
     marginBottom: 28,

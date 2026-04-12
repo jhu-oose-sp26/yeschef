@@ -1,8 +1,10 @@
 package com.yeschef.api;
 
 import com.yeschef.api.config.SupabaseJwtFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,17 +24,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // No CSRF needed — we're using stateless JWT auth, not browser sessions
+            .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
-            // Don't create or use HTTP sessions — every request must carry its own JWT
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Allow signup and login without a token
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/auth/**").permitAll()
-                // Everything else requires a valid Supabase JWT
                 .anyRequest().authenticated()
             )
-            // Run our JWT filter before Spring's default username/password filter
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) ->
+                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+            )
             .addFilterBefore(supabaseJwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

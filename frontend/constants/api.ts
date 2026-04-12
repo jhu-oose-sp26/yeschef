@@ -23,3 +23,7 @@ export function savedUrl(userId: number, path = '') {
 export function ratingsUrl(path = '') {
   return `${API_BASE_URL}/ratings${path}`;
 }
+
+export function authUrl(path = '') {
+  return `${API_BASE_URL}/auth${path}`;
+}

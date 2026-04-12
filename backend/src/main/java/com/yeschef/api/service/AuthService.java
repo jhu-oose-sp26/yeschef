@@ -4,18 +4,24 @@ import com.yeschef.api.DTO.AuthRequest;
 import com.yeschef.api.DTO.AuthResponse;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     @Value("${supabase.url}")
     private String supabaseUrl;
@@ -25,16 +31,22 @@ public class AuthService {
 
     private final UserRepository userRepository;
 
-    // RestTemplate is used to make HTTP calls to the Supabase Auth API
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = createRestTemplate();
+
+    private static RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(10_000);
+        return new RestTemplate(factory);
+    }
 
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
-    // Registers a new user with Supabase Auth, then creates a matching local user row.
-    // Returns the Supabase access token and the new local user.
-    public AuthResponse signup(AuthRequest request) {
+    // Registers a new user with Supabase Auth and creates a matching local user row.
+    // Always returns without a session — email confirmation is required before the user can log in.
+    public void signup(AuthRequest request) {
         HttpHeaders headers = buildHeaders();
 
         Map<String, String> body = new HashMap<>();
@@ -49,21 +61,55 @@ public class AuthService {
                     new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
             Map<String, Object> responseBody = response.getBody();
-            String accessToken = (String) responseBody.get("access_token");
+
+            if (responseBody == null) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Supabase returned null response body");
+            }
+
+            UUID supabaseId = null;
+
+            // Try to extract id from "user" node
             @SuppressWarnings("unchecked")
-            String supabaseId = (String) ((Map<String, Object>) responseBody.get("user")).get("id");
+            Map<String, Object> userNode = (Map<String, Object>) responseBody.get("user");
+            if (userNode != null && userNode.get("id") instanceof String) {
+                supabaseId = UUID.fromString((String) userNode.get("id"));
+            }
 
-            // Create the local user profile linked to the Supabase auth account
-            User user = new User();
-            user.setSupabaseId(supabaseId);
-            user.setUsername(request.getUsername());
-            User savedUser = userRepository.save(user);
+            // If not found, try top-level "id"
+            if (supabaseId == null && responseBody.get("id") instanceof String) {
+                supabaseId = UUID.fromString((String) responseBody.get("id"));
+            }
 
-            return new AuthResponse(accessToken, savedUser);
+            if (supabaseId == null) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Could not extract user id from Supabase response");
+            }
+
+            // Create the local user profile immediately via JPA.
+            // Do not rely on a Supabase JWT/session here, because confirm-email mode
+            // returns user info without a session.
+            if (!userRepository.existsBySupabaseId(supabaseId)) {
+                User newUser = new User();
+                newUser.setSupabaseId(supabaseId);
+                newUser.setUsername(request.getUsername());
+                userRepository.save(newUser);
+            }
 
         } catch (HttpClientErrorException e) {
-            // Forward any error from Supabase (e.g. email already in use) back to the client
-            throw new ResponseStatusException(e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("Supabase signup error: {}", e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 429) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Too many signup attempts. Please wait before trying again.");
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Signup failed. Please try again.");
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected signup error", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Signup failed. Please try again.");
         }
     }
 
@@ -85,9 +131,8 @@ public class AuthService {
             Map<String, Object> responseBody = response.getBody();
             String accessToken = (String) responseBody.get("access_token");
             @SuppressWarnings("unchecked")
-            String supabaseId = (String) ((Map<String, Object>) responseBody.get("user")).get("id");
+            UUID supabaseId = UUID.fromString((String) ((Map<String, Object>) responseBody.get("user")).get("id"));
 
-            // Look up the local user by their Supabase UUID
             User user = userRepository.findBySupabaseId(supabaseId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "No local user found for this Supabase account"));
@@ -95,16 +140,62 @@ public class AuthService {
             return new AuthResponse(accessToken, user);
 
         } catch (HttpClientErrorException e) {
-            // Forward any error from Supabase (e.g. wrong password) back to the client
-            throw new ResponseStatusException(e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("Supabase login error: {}", e.getResponseBodyAsString());
+            String errorBody = e.getResponseBodyAsString();
+            // Supabase returns 400 with error_code "email_not_confirmed" for unconfirmed accounts
+            if (errorBody.contains("email_not_confirmed") || errorBody.contains("Email not confirmed")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Email not confirmed. Please check your inbox.");
+            }
+            if (e.getStatusCode().value() == 429) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Too many login attempts. Please wait before trying again.");
+            }
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Invalid email or password.");
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected login error", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Login failed. Please try again.");
         }
     }
 
-    // Builds the headers required by the Supabase Auth API
+    // Asks Supabase to resend the signup confirmation email.
+    public void resendConfirmation(String email) {
+        HttpHeaders headers = buildHeaders();
+
+        Map<String, String> body = new HashMap<>();
+        body.put("type", "signup");
+        body.put("email", email);
+
+        try {
+            restTemplate.exchange(
+                    supabaseUrl + "/auth/v1/resend",
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, headers),
+                    new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+        } catch (HttpClientErrorException e) {
+            log.error("Supabase resend confirmation error: {}", e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 429) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Too many resend attempts. Please wait before trying again.");
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to resend confirmation email. Please try again.");
+        } catch (Exception e) {
+            log.error("Unexpected resend confirmation error", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to resend confirmation email. Please try again.");
+        }
+    }
+
     private HttpHeaders buildHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("apikey", supabaseAnonKey);
+        headers.setBearerAuth(supabaseAnonKey);
         return headers;
     }
 }
