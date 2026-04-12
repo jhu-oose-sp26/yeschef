@@ -2,6 +2,7 @@ package com.yeschef.api;
 
 import com.yeschef.api.controller.UserController;
 import com.yeschef.api.model.Friendship;
+import com.yeschef.api.model.HasLiked;
 import com.yeschef.api.model.Recipe;
 import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.model.User;
@@ -468,6 +469,75 @@ class UserControllerTests {
 
         mockMvc.perform(get("/users/{id}/recipes", 999L).with(user("testuser").roles("USER")))
             .andExpect(status().isNotFound());
+    }
+
+    // --- GET /users/{id}/friends/liked ---
+
+    @Test
+    void getFriendsLikedRecipes_returnsRecipesLikedByFriend() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+        alice.setUsername("alice");
+
+        User bob = new User();
+        bob.setId(2L);
+        bob.setUsername("bob");
+
+        Recipe recipe = new Recipe();
+        recipe.setId(100L);
+        recipe.setTitle("Tacos");
+
+        HasLiked hasLiked = new HasLiked();
+        hasLiked.setUser(bob);
+        hasLiked.setRecipe(recipe);
+        bob.setLikes(java.util.Collections.singletonList(hasLiked));
+
+        Friendship friendship = new Friendship();
+        friendship.setSelf(alice);
+        friendship.setFriend(bob);
+        alice.setFriendshipsSent(java.util.Collections.singletonList(friendship));
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+
+        mockMvc.perform(get("/users/{id}/friends/liked", 1L).with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(100L))
+            .andExpect(jsonPath("$[0].title").value("Tacos"));
+    }
+
+    @Test
+    void getFriendsLikedRecipes_returnsEmptyList_whenFriendHasNoLikes() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+
+        User bob = new User();
+        bob.setId(2L);
+        bob.setLikes(java.util.Collections.emptyList());
+
+        Friendship friendship = new Friendship();
+        friendship.setSelf(alice);
+        friendship.setFriend(bob);
+        alice.setFriendshipsSent(java.util.Collections.singletonList(friendship));
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+
+        mockMvc.perform(get("/users/{id}/friends/liked", 1L).with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void getFriendsLikedRecipes_returnsNotFound_whenUserDoesNotExist() throws Exception {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/users/{id}/friends/liked", 999L).with(user("testuser").roles("USER")))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getFriendsLikedRecipes_requiresAuthentication() throws Exception {
+        mockMvc.perform(get("/users/{id}/friends/liked", 1L))
+            .andExpect(status().isUnauthorized());
     }
 
     // test getting friends' recipes

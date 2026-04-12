@@ -18,13 +18,19 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
   'magnifyingglass': 'search',
   'book.closed.fill': 'menu-book',
   'person.fill': 'person',
   'star.fill': 'star',
   'star': 'star-border',
-  'plus.circle' : 'add-circle-outline',
-  'person.2.fill': 'people',
+  'plus.circle': 'add-circle-outline',
+  'books.vertical.fill': 'library-books',
+  'xmark': 'close',
+  'bookmark.fill': 'bookmark',
+  'square.grid.2x2': 'apps',
+  'fork.knife': 'restaurant',
+  'pencil': 'edit',
 } as IconMapping;
 
 /**
