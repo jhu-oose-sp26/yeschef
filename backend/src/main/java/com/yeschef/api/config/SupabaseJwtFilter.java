@@ -24,6 +24,7 @@ import java.net.URI;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 // Runs on every request and validates the Supabase JWT from the Authorization header.
 // Supabase uses ES256 or RS256 — we verify against their public JWKS endpoint.
@@ -40,11 +41,14 @@ public class SupabaseJwtFilter extends OncePerRequestFilter {
     // Lazily initialized so the @Value is available when first used
     private JwkProvider jwkProvider;
 
-    private JwkProvider getJwkProvider() throws Exception {
+    private synchronized JwkProvider getJwkProvider() throws Exception {
         if (jwkProvider == null) {
             String jwksUrl = supabaseUrl + "/auth/v1/.well-known/jwks.json";
             log.info("Initializing JWKS provider from {}", jwksUrl);
-            jwkProvider = new JwkProviderBuilder(URI.create(jwksUrl).toURL()).build();
+            jwkProvider = new JwkProviderBuilder(URI.create(jwksUrl).toURL())
+                    .cached(10, 12, TimeUnit.HOURS)   // cache up to 10 keys for 12 hours
+                    .timeouts(3000, 5000)              // 3s connect, 5s read — fail fast
+                    .build();
         }
         return jwkProvider;
     }

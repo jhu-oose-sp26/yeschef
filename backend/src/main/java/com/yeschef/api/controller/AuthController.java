@@ -36,6 +36,12 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    // POST /auth/refresh — exchanges a refresh token for a new access + refresh token pair.
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(authService.refresh(body.get("refreshToken")));
+    }
+
     // POST /auth/resend-confirmation — resends the Supabase signup confirmation email.
     @PostMapping("/resend-confirmation")
     public ResponseEntity<Map<String, String>> resendConfirmation(@RequestBody Map<String, String> body) {

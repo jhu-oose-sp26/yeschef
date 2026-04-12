@@ -100,7 +100,7 @@ class AuthControllerTests {
         user.setUsername("alice");
 
         when(authService.login(any(AuthRequest.class)))
-                .thenReturn(new AuthResponse("mock-access-token", user));
+                .thenReturn(new AuthResponse("mock-access-token", "mock-refresh-token", user));
 
         mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -154,7 +154,7 @@ class AuthControllerTests {
         user.setUsername("alice");
 
         when(authService.login(any(AuthRequest.class)))
-                .thenReturn(new AuthResponse("mock-access-token", user));
+                .thenReturn(new AuthResponse("mock-access-token", "mock-refresh-token", user));
 
         // No .with(user(...)) — verifying the endpoint is accessible without any auth
         mockMvc.perform(post("/auth/login")

@@ -130,6 +130,7 @@ public class AuthService {
 
             Map<String, Object> responseBody = response.getBody();
             String accessToken = (String) responseBody.get("access_token");
+            String refreshToken = (String) responseBody.get("refresh_token");
             @SuppressWarnings("unchecked")
             UUID supabaseId = UUID.fromString((String) ((Map<String, Object>) responseBody.get("user")).get("id"));
 
@@ -137,7 +138,7 @@ public class AuthService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "No local user found for this Supabase account"));
 
-            return new AuthResponse(accessToken, user);
+            return new AuthResponse(accessToken, refreshToken, user);
 
         } catch (HttpClientErrorException e) {
             log.error("Supabase login error: {}", e.getResponseBodyAsString());
@@ -159,6 +160,54 @@ public class AuthService {
             log.error("Unexpected login error", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Login failed. Please try again.");
+        }
+    }
+
+    // Exchanges a Supabase refresh token for a new access + refresh token pair.
+    public AuthResponse refresh(String refreshToken) {
+        HttpHeaders headers = buildHeaders();
+
+        Map<String, String> body = new HashMap<>();
+        body.put("refresh_token", refreshToken);
+
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    supabaseUrl + "/auth/v1/token?grant_type=refresh_token",
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, headers),
+                    new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Supabase returned null response body");
+            }
+            String newAccessToken = (String) responseBody.get("access_token");
+            String newRefreshToken = (String) responseBody.get("refresh_token");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> userNode = (Map<String, Object>) responseBody.get("user");
+            if (userNode == null || !(userNode.get("id") instanceof String)) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Could not extract user id from Supabase refresh response");
+            }
+            UUID supabaseId = UUID.fromString((String) userNode.get("id"));
+
+            User user = userRepository.findBySupabaseId(supabaseId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "No local user found for this Supabase account"));
+
+            return new AuthResponse(newAccessToken, newRefreshToken, user);
+
+        } catch (HttpClientErrorException e) {
+            log.error("Supabase token refresh error: {}", e.getResponseBodyAsString());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Session expired. Please log in again.");
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected token refresh error", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Token refresh failed. Please try again.");
         }
     }
 

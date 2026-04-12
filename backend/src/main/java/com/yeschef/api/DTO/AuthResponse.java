@@ -8,13 +8,16 @@ import com.yeschef.api.model.User;
 public class AuthResponse {
 
     private String accessToken;
+    private String refreshToken;
     private AuthUserDTO user;
 
-    public AuthResponse(String accessToken, User user) {
+    public AuthResponse(String accessToken, String refreshToken, User user) {
         this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
         this.user = new AuthUserDTO(user);
     }
 
     public String getAccessToken() { return accessToken; }
+    public String getRefreshToken() { return refreshToken; }
     public AuthUserDTO getUser() { return user; }
 }

@@ -17,9 +17,10 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { getUsers, getFriends, getFriendsRecipes } from '@/lib/api/users';
+import { getFriends, getFriendsRecipes } from '@/lib/api/users';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { getRatingsForRecipe } from '@/lib/api/ratings';
-import type { Recipe, User, RatingResponse } from '@/lib/api/types';
+import type { Recipe, RatingResponse } from '@/lib/api/types';
 
 interface FeedRecipe extends Recipe {
   avgTaste: number | null;
@@ -28,9 +29,9 @@ interface FeedRecipe extends Recipe {
 }
 
 export default function FeedScreen() {
+  const { user: authUser } = useAuth();
   const [feedRecipes, setFeedRecipes] = useState<FeedRecipe[]>([]);
   const [friendNames, setFriendNames] = useState<string[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,19 +47,15 @@ export default function FeedScreen() {
     else setLoading(true);
     setError(null);
     try {
-      const users = await getUsers();
-      const user = users[0] ?? null;
-      setCurrentUser(user);
-
-      if (!user) {
+      if (!authUser) {
         setFeedRecipes([]);
         setFriendNames([]);
         return;
       }
 
       const [recipes, friends] = await Promise.all([
-        getFriendsRecipes(user.id),
-        getFriends(user.id).catch(() => [] as string[]),
+        getFriendsRecipes(authUser.id),
+        getFriends(authUser.id).catch(() => [] as string[]),
       ]);
       setFriendNames(friends);
 
@@ -87,7 +84,7 @@ export default function FeedScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [authUser]);
 
   useEffect(() => {
     loadFeed();
@@ -117,15 +114,15 @@ export default function FeedScreen() {
     );
   }
 
-  if (!currentUser) {
+  if (!authUser) {
     return (
       <ThemedView style={styles.centered}>
         <View style={[styles.emptyIcon, { backgroundColor: accent + '18' }]}>
           <IconSymbol name="person.2.fill" size={48} color={accent} />
         </View>
-        <ThemedText type="subtitle" style={styles.emptyTitle}>No user found</ThemedText>
+        <ThemedText type="subtitle" style={styles.emptyTitle}>Not logged in</ThemedText>
         <ThemedText style={styles.message}>
-          Create a user via the API to see your friends feed here.
+          Log in to see your friends feed here.
         </ThemedText>
       </ThemedView>
     );

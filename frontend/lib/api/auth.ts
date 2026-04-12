@@ -14,6 +14,7 @@ export interface AuthUser {
 
 export interface AuthResponse {
   accessToken: string;
+  refreshToken: string;
   user: AuthUser;
 }
 
@@ -52,6 +53,16 @@ export async function signup(email: string, password: string, username: string):
     body: JSON.stringify({ email, password, username }),
   });
   await handleResponse<{ message: string }>(res);
+}
+
+/** POST /auth/refresh — exchange a refresh token for a new access + refresh token pair. */
+export async function refresh(refreshToken: string): Promise<AuthResponse> {
+  const res = await fetch(authUrl('/refresh'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+  return handleResponse<AuthResponse>(res);
 }
 
 /** POST /auth/resend-confirmation — asks Supabase to resend the signup confirmation email. */

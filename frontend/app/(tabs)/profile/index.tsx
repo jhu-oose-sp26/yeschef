@@ -20,8 +20,8 @@ import { Fonts } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
-import { getSavedRecipes, getUsers, getUserRecipes } from '@/lib/api/users';
-import type { User } from '@/lib/api/users';
+import { getSavedRecipes, getUserRecipes } from '@/lib/api/users';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 const PAPRIKA = '#DC602E';
 const CELADON = '#B8D5B8';
@@ -31,8 +31,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const cardBg = useThemeColor({}, 'card');
   const cardBorder = useThemeColor({}, 'cardBorder');
+  const { user: authUser, logout } = useAuth();
 
-  const [user, setUser] = useState<User | null>(null);
   const [createdRecipes, setCreatedRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,21 +64,13 @@ export default function ProfileScreen() {
   };
 
   const loadProfile = useCallback(async () => {
+    if (!authUser) return;
     setLoading(true);
     setError(null);
     try {
-      const users = await getUsers();
-      const currentUser = users[0] ?? null;
-      setUser(currentUser);
-
-      if (!currentUser) {
-        setCreatedRecipes([]);
-        return;
-      }
-
       const [saved, created] = await Promise.all([
-        getSavedRecipes(currentUser.id),
-        getUserRecipes(currentUser.id),
+        getSavedRecipes(authUser.id),
+        getUserRecipes(authUser.id),
       ]);
 
       setCreatedRecipes(created);
@@ -91,7 +83,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authUser]);
 
   useEffect(() => {
     loadProfile();
@@ -117,8 +109,8 @@ export default function ProfileScreen() {
     );
   }
 
-  const initial = user?.username?.[0]?.toUpperCase() ?? '?';
-  const userId = user?.id;
+  const initial = authUser?.username?.[0]?.toUpperCase() ?? '?';
+  const userId = authUser?.id;
   const recentActivity = createdRecipes.slice(0, RECENT_LIMIT);
 
   return (
@@ -135,10 +127,10 @@ export default function ProfileScreen() {
           </View>
 
           <ThemedText style={[styles.displayName, { fontFamily: Fonts?.rounded }]}>
-            {user?.username ?? 'Guest'}
+            {authUser?.username ?? 'Guest'}
           </ThemedText>
           <ThemedText style={styles.handle}>
-            {user ? `@${user.username}` : 'No user yet'}
+            {authUser ? `@${authUser.username}` : 'No user yet'}
           </ThemedText>
         </View>
 
@@ -190,6 +182,15 @@ export default function ProfileScreen() {
             <IconSymbol name="chevron.right" size={16} color={PAPRIKA} />
           </Pressable>
         </View>
+
+        {/* ── Sign Out ── */}
+        <Pressable
+          style={({ pressed }) => [styles.signOutBtn, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={logout}
+        >
+          <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={PAPRIKA} />
+          <ThemedText style={styles.signOutText}>Sign out</ThemedText>
+        </Pressable>
       </ScrollView>
 
       {/* ── 3-dot Menu Overlay ── */}
@@ -224,6 +225,14 @@ export default function ProfileScreen() {
               <ThemedText style={styles.menuItemText}>View saved recipes</ThemedText>
               <IconSymbol name="chevron.right" size={16} color={PAPRIKA} />
             </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.menuItem, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => closeMenu(logout)}
+            >
+              <IconSymbol name="rectangle.portrait.and.arrow.right" size={20} color={PAPRIKA} />
+              <ThemedText style={styles.menuItemText}>Log out</ThemedText>
+            </Pressable>
           </View>
         </Animated.View>
       </Modal>
@@ -233,7 +242,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  container: { padding: 20, paddingBottom: 48 },
+  container: { padding: 20, paddingBottom: 32 },
 
   headerCard: {
     borderRadius: 20,
@@ -342,4 +351,18 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
   },
   menuItemText: { flex: 1, fontSize: 16 },
+
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 32,
+    marginBottom: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: PAPRIKA,
+  },
+  signOutText: { fontSize: 15, fontWeight: '600', color: PAPRIKA },
 });

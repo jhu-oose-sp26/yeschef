@@ -7,8 +7,10 @@ export function authHeaders(): Record<string, string> {
 
 export async function handleResponse<T>(res: Response): Promise<T> {
   if (res.status === 401) {
-    // Token expired or invalid — notify AuthContext to clear the session
-    if (typeof window !== 'undefined') {
+    // Only clear the session if we actually sent a token that was rejected.
+    // If no token was in the store, the 401 just means "not logged in yet" —
+    // dispatching here would delete a perfectly valid stored token mid-restore.
+    if (typeof window !== 'undefined' && tokenStore.get()) {
       window.dispatchEvent(new Event('auth:unauthorized'));
     }
     throw new Error('Session expired. Please log in again.');
