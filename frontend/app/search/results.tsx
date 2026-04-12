@@ -51,7 +51,7 @@ export default function SearchResultsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
         {/* BACK BUTTON */}
-        <Pressable onPress={() => router.replace('/browse')} style={styles.backButton}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
           <IconSymbol name="chevron.left" size={22} color="#333" />
         </Pressable>
 
@@ -72,7 +72,7 @@ export default function SearchResultsScreen() {
             <IconSymbol name="magnifyingglass" size={18} color="#ffffff" />
 
             <TextInput
-              placeholder="What’s on the menu..."
+              placeholder="What's on the menu..."
               placeholderTextColor="#aaa"
               value={query}
               onChangeText={setQuery}
@@ -91,8 +91,7 @@ export default function SearchResultsScreen() {
                 { backgroundColor: cardBg, opacity: pressed ? 0.85 : 1 },
               ]}
               onPress={() => {
-                // future navigation
-                // router.push(`/recipes/${recipe.id}`)
+                router.push(`/recipes/${recipe.id}`)
               }}
             >
               <View style={styles.cardLeft}>

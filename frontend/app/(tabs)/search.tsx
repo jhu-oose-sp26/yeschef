@@ -40,7 +40,7 @@ export default function SearchScreen() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (query.length > 0) {
-        router.replace(`../search/results?q=${encodeURIComponent(query)}`);
+        router.push(`../search/results?q=${encodeURIComponent(query)}`);
       }
     }, 300);
 
