@@ -13,22 +13,20 @@ export default function IngredientScreen() {
   const accent = useThemeColor({}, 'accent');
 
   const DATA = [
-    5,
-    10,
-    15,
-    20,
-    25,
-    30,
-    35,
-    40,
-    45,
-    50,
-    55,
-    60,
-    90,
-    120,
-    150,
-    180,
+    '<5 minutes',
+    '<10 minutes',
+    '<15 minutes',
+    '<20 minutes',
+    '<25 minutes',
+    '<30 minutes',
+    '<35 minutes',
+    '<40 minutes',
+    '<45 minutes',
+    '<50 minutes',
+    '<55 minutes',
+    '<1 hour',
+    '<1.5 hours',
+    '<2 hours',
   ];
 
   return (
@@ -40,7 +38,7 @@ export default function IngredientScreen() {
           </ThemedText>
         </Pressable>
 
-        <ThemedText style={styles.title}>Ingredient</ThemedText>
+        <ThemedText style={styles.title}>Cook Time</ThemedText>
       </View>
 
       <View style={styles.list}>
@@ -56,10 +54,29 @@ export default function IngredientScreen() {
               },
             ]}
             onPress={() => {
+                const valueMap: Record<string, number> = {
+                    '<5 minutes': 5,
+                    '<10 minutes': 10,
+                    '<15 minutes': 15,
+                    '<20 minutes': 20,
+                    '<25 minutes': 25,
+                    '<30 minutes': 30,
+                    '<35 minutes': 35,
+                    '<40 minutes': 40,
+                    '<45 minutes': 45,
+                    '<50 minutes': 50,
+                    '<55 minutes': 55,
+                    '<1 hour': 60,
+                    '<1.5 hours': 90,
+                    '<2 hours': 120,
+                };
+
+                const minutes = valueMap[item];
+
                 router.push(
-                    `/browse/results?type=ingredient&value=${encodeURIComponent(item.toString().toLowerCase())}`
+                    `./results?type=time&value=${minutes}`
                 );
-            }}
+                }}
           >
             <ThemedText style={styles.rowText}>{item}</ThemedText>
             <IconSymbol name="chevron.right" size={18} color={accent} />

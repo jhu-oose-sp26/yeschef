@@ -7,7 +7,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import RecipeCard from '@/components/RecipeCard';
 
 import type { Recipe } from '@/lib/api/types';
-import { getRecipes, getRecipesByIngredient } from '@/lib/api/recipes'; // adjust if needed
+import { getRecipes, getRecipesByIngredient, getRecipesByTime } from '@/lib/api/recipes'; // adjust if needed
 
 export default function BrowseResultsScreen() {
   const { type, value } = useLocalSearchParams<{
@@ -24,34 +24,30 @@ export default function BrowseResultsScreen() {
 
   useEffect(() => {
     async function load() {
-      setLoading(true);
+        setLoading(true);
 
-      try {
+        try {
         let data: Recipe[] = [];
 
         if (type === 'ingredient') {
-          data = await getRecipesByIngredient(value);
+            data = await getRecipesByIngredient(value);
         } else if (type === 'time') {
-          const all = await getRecipes();
-          const minutes = parseInt(value);
-
-          data = all.filter((r) => {
-            if (!r.instruction) return false;
-            const total = r.instruction.prepTime + r.instruction.cookTime;
-            return total <= minutes;
-          });
+            const minutes = Number(value);
+            data = await getRecipesByTime(minutes);
         }
 
         setRecipes(data);
-      } catch (e) {
-        console.error(e);
-      } finally {
+        } catch (e) {
+        console.error('Error loading recipes:', e);
+        } finally {
         setLoading(false);
-      }
+        }
     }
 
-    load();
-  }, [type, value]);
+    if (type && value) {
+        load();
+    }
+    }, [type, value]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

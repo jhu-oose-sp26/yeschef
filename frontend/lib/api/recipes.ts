@@ -40,3 +40,14 @@ export async function getRecipesByIngredient(ingredient: string): Promise<Recipe
   );
   return handleResponse<Recipe[]>(res);
 }
+
+export async function getRecipesByTime(maxTime: number): Promise<Recipe[]> {
+  const res = await fetch(
+    recipesUrl(`/by-time?maxTime=${encodeURIComponent(maxTime)}`),
+    {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    }
+  );
+  return handleResponse<Recipe[]>(res);
+}
