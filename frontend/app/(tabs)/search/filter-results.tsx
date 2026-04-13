@@ -65,7 +65,7 @@ export default function SearchFilterResultsScreen() {
           recipes.map((recipe) => (
             <Link
               key={recipe.id}
-              href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id) } }}
+              href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'search' } }}
               asChild
             >
               <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>

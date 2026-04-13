@@ -28,7 +28,7 @@ export default function BrowseTabScreen() {
         {recipes.map((recipe) => (
           <Pressable
             key={recipe.id}
-            onPress={() => router.push(`/recipes/${recipe.id}`)}
+            onPress={() => router.push(`/recipes/${recipe.id}?from=browse`)}
             style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           >
             <RecipeCard data={recipe} />
