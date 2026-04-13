@@ -5,7 +5,7 @@
  * Backend must allow CORS from this origin and permit GET /recipes for validation.
  */
 export const API_BASE_URL =
-  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) ||
+  process.env.EXPO_PUBLIC_API_URL ||
   'http://localhost:8080';
 
 export function recipesUrl(path = '') {
