@@ -187,6 +187,10 @@ See the [open issues](https://github.com/jhu-oose-sp26/yeschef/issues) for a ful
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## 🚀 Deployment Status
+
+* **Backend:** https://yeschef-0a5e.onrender.com
+* **Frontend:** Source code available in `/frontend`. Mobile build pending EAS configuration.
 
 
 <!-- CONTRIBUTING -->
