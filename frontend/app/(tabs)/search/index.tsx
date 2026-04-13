@@ -50,14 +50,14 @@ export default function SearchScreen() {
 
        <BrowseCard
           label="Ingredient"
-          onPress={() => router.push('/browse/ingredient')}
+          onPress={() => router.push('/search/ingredient')}
           accent={accent}
           cardBg={cardBg}
           cardBorder={cardBorder}
         />
         <BrowseCard
           label="Cook Time"
-          onPress={() => router.push('/browse/time')}
+          onPress={() => router.push('/search/time')}
           accent={accent}
           cardBg={cardBg}
           cardBorder={cardBorder}
