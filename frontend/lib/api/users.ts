@@ -1,22 +1,14 @@
 import { usersUrl, savedUrl } from '@/constants/api';
+import { authHeaders, handleResponse } from './client';
 import type { User, HasSaved, Recipe } from './types';
 
 export type { User, HasSaved } from './types';
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text || res.statusText}`);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
 
 /** GET /users - fetch all users. */
 export async function getUsers(): Promise<User[]> {
   const res = await fetch(usersUrl(), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<User[]>(res);
 }
@@ -25,7 +17,7 @@ export async function getUsers(): Promise<User[]> {
 export async function getUser(id: number): Promise<User> {
   const res = await fetch(usersUrl(`/${id}`), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<User>(res);
 }
@@ -34,7 +26,7 @@ export async function getUser(id: number): Promise<User> {
 export async function getSavedRecipes(userId: number): Promise<HasSaved[]> {
   const res = await fetch(savedUrl(userId), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<HasSaved[]>(res);
 }
@@ -43,7 +35,7 @@ export async function getSavedRecipes(userId: number): Promise<HasSaved[]> {
 export async function getFriends(userId: number): Promise<string[]> {
   const res = await fetch(usersUrl(`/${userId}/friends`), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<string[]>(res);
 }
@@ -52,7 +44,7 @@ export async function getFriends(userId: number): Promise<string[]> {
 export async function getFriendsRecipes(userId: number): Promise<Recipe[]> {
   const res = await fetch(usersUrl(`/${userId}/friends/recipes`), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<Recipe[]>(res);
 }
@@ -61,7 +53,7 @@ export async function getFriendsRecipes(userId: number): Promise<Recipe[]> {
 export async function getUserRecipes(userId: number): Promise<Recipe[]> {
   const res = await fetch(usersUrl(`/${userId}/recipes`), {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<Recipe[]>(res);
 }
@@ -70,7 +62,7 @@ export async function getUserRecipes(userId: number): Promise<Recipe[]> {
 export async function saveRecipe(userId: number, recipeId: number): Promise<HasSaved> {
   const res = await fetch(savedUrl(userId, `/${recipeId}`), {
     method: 'POST',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...authHeaders() },
   });
   return handleResponse<HasSaved>(res);
 }
@@ -79,6 +71,7 @@ export async function saveRecipe(userId: number, recipeId: number): Promise<HasS
 export async function unsaveRecipe(userId: number, recipeId: number): Promise<void> {
   const res = await fetch(savedUrl(userId, `/${recipeId}`), {
     method: 'DELETE',
+    headers: { ...authHeaders() },
   });
   return handleResponse<void>(res);
 }

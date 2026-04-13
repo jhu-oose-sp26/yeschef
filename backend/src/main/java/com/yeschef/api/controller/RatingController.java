@@ -21,6 +21,7 @@ import com.yeschef.api.model.User;
 import com.yeschef.api.repository.RatingRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
+import com.yeschef.api.service.AuthenticatedUserService;
 
 @RestController
 @RequestMapping("/ratings")
@@ -29,13 +30,16 @@ public class RatingController {
     private final RatingRepository ratingRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final AuthenticatedUserService authenticatedUserService;
 
     public RatingController(RatingRepository ratingRepository,
                             RecipeRepository recipeRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            AuthenticatedUserService authenticatedUserService) {
         this.ratingRepository = ratingRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     private RatingResponseDTO toDTO(Rating rating) {
@@ -105,13 +109,9 @@ public class RatingController {
 
     @PostMapping
     public ResponseEntity<RatingResponseDTO> createRating(@RequestBody RatingRequestDTO dto) {
+        User currentUser = authenticatedUserService.requireCurrentUser(dto.getUserId());
         Optional<Recipe> recipeMaybe = recipeRepository.findById(dto.getRecipeId());
         if (recipeMaybe.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Optional<User> userMaybe = userRepository.findById(dto.getUserId());
-        if (userMaybe.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
@@ -122,7 +122,7 @@ public class RatingController {
 
         Rating rating = new Rating();
         rating.setRecipe(recipeMaybe.get());
-        rating.setUser(userMaybe.get());
+        rating.setUser(currentUser);
         rating.setTasteQuality(dto.getTasteQuality());
         rating.setEaseOfExecution(dto.getEaseOfExecution());
 
@@ -136,14 +136,13 @@ public class RatingController {
         if (ratingMaybe.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        authenticatedUserService.requireCurrentUser(dto.getUserId());
+        if (!ratingMaybe.get().getUser().getId().equals(dto.getUserId())) {
+            return ResponseEntity.status(403).build();
+        }
 
         Optional<Recipe> recipeMaybe = recipeRepository.findById(dto.getRecipeId());
         if (recipeMaybe.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Optional<User> userMaybe = userRepository.findById(dto.getUserId());
-        if (userMaybe.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
@@ -154,7 +153,6 @@ public class RatingController {
 
         Rating existing = ratingMaybe.get();
         existing.setRecipe(recipeMaybe.get());
-        existing.setUser(userMaybe.get());
         existing.setTasteQuality(dto.getTasteQuality());
         existing.setEaseOfExecution(dto.getEaseOfExecution());
 
@@ -164,10 +162,11 @@ public class RatingController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRating(@PathVariable Long id) {
-        if (!ratingRepository.existsById(id)) {
+        Optional<Rating> ratingMaybe = ratingRepository.findById(id);
+        if (ratingMaybe.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-
+        authenticatedUserService.requireCurrentUser(ratingMaybe.get().getUser().getId());
         ratingRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }

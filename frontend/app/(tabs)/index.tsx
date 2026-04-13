@@ -10,14 +10,17 @@ import { Link } from 'expo-router';
 import { getRecipes } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/types';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 
 export default function HomeScreen() {
+  const { isLoading } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
   useEffect(() => {
-    getRecipes().then(setRecipes);
-  }, []);
+    if (isLoading) return;
+    getRecipes().then(setRecipes).catch(() => {});
+  }, [isLoading]);
 
   return (
     <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

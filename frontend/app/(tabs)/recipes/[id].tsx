@@ -22,10 +22,12 @@ import {
   updateRating,
 } from '@/lib/api/ratings';
 import type { RatingResponse } from '@/lib/api/ratings';
-import { getUsers, getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
+import { getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user: authUser } = useAuth();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,20 +60,18 @@ export default function RecipeDetailScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [data, allRatings, users] = await Promise.all([
+      const [data, allRatings] = await Promise.all([
         getRecipe(numId),
         getRatingsForRecipe(numId).catch(() => [] as RatingResponse[]),
-        getUsers(),
       ]);
       setRecipe(data);
       setRatings(allRatings);
 
-      const user = users[0] ?? null;
-      if (user) {
-        setCurrentUserId(user.id);
+      if (authUser) {
+        setCurrentUserId(authUser.id);
         const [existing, savedList] = await Promise.all([
-          getUserRatingForRecipe(user.id, numId),
-          getSavedRecipes(user.id).catch(() => []),
+          getUserRatingForRecipe(authUser.id, numId),
+          getSavedRecipes(authUser.id).catch(() => []),
         ]);
         if (existing) {
           setMyRating(existing);
@@ -85,7 +85,7 @@ export default function RecipeDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, numId]);
+  }, [id, numId, authUser]);
 
   useEffect(() => {
     loadRecipe();
