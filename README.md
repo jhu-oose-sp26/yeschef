@@ -166,11 +166,11 @@ _For API endpoint details, see the controller source at [`backend/src/main/java/
 - [x] Rate recipes on taste quality and ease of execution
 - [x] Upload personal recipes
 - [x] Discover recipes from external sources (e.g. NYT Cooking)
-- [ ] View friends' recipes and social feed
+- [x] View friends' recipes and social feed
 - [x] User profile with stats and personal cookbook
-- [ ] Search and filter ingredients, recipe time, and difficulty
+- [x] Search and filter ingredients, recipe time, and difficulty
 - [x] Save recipes to a personal collection
-- [ ] Cross-device authentication
+- [x] Cross-device authentication
 
 ### Nice to Have
 - [ ] Recipe recommendations based on activity
