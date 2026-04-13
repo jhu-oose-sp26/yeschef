@@ -29,3 +29,25 @@ export async function getRecipe(id: number): Promise<Recipe> {
   });
   return handleResponse<Recipe>(res);
 }
+
+export async function getRecipesByIngredient(ingredient: string): Promise<Recipe[]> {
+  const res = await fetch(
+    recipesUrl(`/by-ingredient?ingredient=${encodeURIComponent(ingredient)}`),
+    {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    }
+  );
+  return handleResponse<Recipe[]>(res);
+}
+
+export async function getRecipesByTime(maxTime: number): Promise<Recipe[]> {
+  const res = await fetch(
+    recipesUrl(`/by-time?maxTime=${encodeURIComponent(maxTime)}`),
+    {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    }
+  );
+  return handleResponse<Recipe[]>(res);
+}

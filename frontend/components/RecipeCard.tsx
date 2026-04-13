@@ -29,7 +29,7 @@ export default function RecipeCard({data}: {data : Recipe}) {
 
 const styles = StyleSheet.create({
   card: {
-    height: 0.15 * Dimensions.get('window').height,
+    
     width: 0.9 * Dimensions.get('window').width,
     overflow: 'hidden',
     backgroundColor: '#fff',
