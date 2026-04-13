@@ -1,6 +1,7 @@
 import { usersUrl, savedUrl } from '@/constants/api';
 import { authHeaders, handleResponse } from './client';
 import type { User, HasSaved, Recipe } from './types';
+import { normalizeRecipes } from './recipes';
 
 export type { User, HasSaved } from './types';
 
@@ -46,7 +47,8 @@ export async function getFriendsRecipes(userId: number): Promise<Recipe[]> {
     method: 'GET',
     headers: { Accept: 'application/json', ...authHeaders() },
   });
-  return handleResponse<Recipe[]>(res);
+  const data = await handleResponse<Recipe[]>(res);
+  return normalizeRecipes(data);
 }
 
 /** GET /users/{id}/recipes - fetch recipes created by a user. */
@@ -55,7 +57,8 @@ export async function getUserRecipes(userId: number): Promise<Recipe[]> {
     method: 'GET',
     headers: { Accept: 'application/json', ...authHeaders() },
   });
-  return handleResponse<Recipe[]>(res);
+  const data = await handleResponse<Recipe[]>(res);
+  return normalizeRecipes(data);
 }
 
 /** POST /users/{userId}/saved/{recipeId} - save a recipe for a user. */
