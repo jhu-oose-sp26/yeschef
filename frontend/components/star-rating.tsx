@@ -17,7 +17,7 @@ export function StarRating({
   onChange,
   size = 24,
   color = '#F5A623',
-  emptyColor = '#D0D0D0',
+  emptyColor = '#5b5858',
 }: StarRatingProps) {
   const interactive = !!onChange;
 

@@ -72,7 +72,7 @@ export default function IngredientScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace('/browse/ingredient')}>
+        <Pressable onPress={() => router.back()}>
           <ThemedText style={[styles.backText, { color: accent }]}>
             ← Browse
           </ThemedText>
