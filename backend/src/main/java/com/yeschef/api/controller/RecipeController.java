@@ -1,6 +1,7 @@
 package com.yeschef.api.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +31,7 @@ import com.yeschef.api.repository.UserRepository;
 // This controller exposes REST endpoints related to recipes.
 @RestController
 @RequestMapping("/recipes") // base path for all recipe-related endpoints
+@CrossOrigin(origins = "*")
 public class RecipeController {
 
     // Spring injects an implementation of RecipeRepository at runtime.

@@ -12,6 +12,7 @@ import java.util.Map;
 // Handles signup and login. These endpoints are public — no JWT required.
 @RestController
 @RequestMapping("/auth")
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
