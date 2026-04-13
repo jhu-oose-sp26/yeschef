@@ -188,8 +188,18 @@ See the [open issues](https://github.com/jhu-oose-sp26/yeschef/issues) for a ful
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- DEPLOYMENT -->
-* **Web Application (CLICK HERE):** https://yeschef-sigma.vercel.app
-* **Backend:** https://yeschef-7zi4.onrender.com
+## Deployment
+* **Web Application:** Live app hosted on Vercel
+  * [Click here to open](https://yeschef-sigma.vercel.app)
+    * Sign up or Sign in to start using
+    * Need to verify your email to create an account
+      * You will receive a link in your email - just click on it (doesn't matter what page it takes you to for now)
+* **Backend:** REST API hosted on Render
+  * https://yeschef-7zi4.onrender.com
+  * The first time you make an API call, the server may take several minutes to wake up. 
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 
 <!-- CONTRIBUTING -->
 ## Contributing
