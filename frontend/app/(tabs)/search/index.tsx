@@ -1,21 +1,11 @@
-import { View, Text, TextInput, StyleSheet, Pressable, Platform, ScrollView } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { View, TextInput, StyleSheet, Pressable, Platform, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import RecipeCard from '@/components/RecipeCard'
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { getRecipes } from '@/lib/api/recipes';
-import type { Recipe } from '@/lib/api/types';
-
-/**
- * Search screen: ""
- * Wired to XXX and XXXX APIs. Without auth we use the first user from the API.
- */
 export default function SearchScreen() {
 
   const cardBg = useThemeColor({}, 'card');
@@ -23,40 +13,15 @@ export default function SearchScreen() {
   const accent = useThemeColor({}, 'accent');
 
   const [query, setQuery] = useState('');
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [filtered, setFiltered] = useState<Recipe[]>([]);
 
   const router = useRouter();
 
-  useEffect(() => {
-    async function load() {
-      const data = await getRecipes();
-      setRecipes(data);
-      setFiltered(data);
+  function handleQueryChange(text: string) {
+    setQuery(text);
+    if (text.length > 0) {
+      router.push(`/search/results?q=${encodeURIComponent(text)}`);
     }
-    load();
-  }, []);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (query.length > 0) {
-        router.push(`../search/results?q=${encodeURIComponent(query)}`);
-      }
-    }, 300);
-
-    return () => clearTimeout(timeout);
-  }, [query]);
-
-  useEffect(() => {
-    if (!query) {
-      setFiltered(recipes);
-    } else {
-      const q = query.toLowerCase();
-      setFiltered(
-        recipes.filter((r) => r.title.toLowerCase().includes(q))
-      );
-    }
-  }, [query, recipes]);
+  }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -72,7 +37,7 @@ export default function SearchScreen() {
           <TextInput
           placeholder="What's on the menu..."
           value={query}
-          onChangeText={setQuery}
+          onChangeText={handleQueryChange}
           style={styles.input}
           />
         </View>
@@ -85,14 +50,14 @@ export default function SearchScreen() {
 
        <BrowseCard
           label="Ingredient"
-          onPress={() => router.push('../browse/ingredient')}
+          onPress={() => router.push('/browse/ingredient')}
           accent={accent}
           cardBg={cardBg}
           cardBorder={cardBorder}
         />
         <BrowseCard
           label="Cook Time"
-          onPress={() => router.push('../browse/time')}
+          onPress={() => router.push('/browse/time')}
           accent={accent}
           cardBg={cardBg}
           cardBorder={cardBorder}
