@@ -81,7 +81,7 @@ export async function getRecipesByIngredient(ingredient: string): Promise<Recipe
     recipesUrl(`/by-ingredient?ingredient=${encodeURIComponent(ingredient)}`),
     {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', ...authHeaders() },
     }
   );
   const data = await handleResponse<RawRecipe[]>(res);
@@ -93,7 +93,7 @@ export async function getRecipesByTime(maxTime: number): Promise<Recipe[]> {
     recipesUrl(`/by-time?maxTime=${encodeURIComponent(maxTime)}`),
     {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', ...authHeaders() },
     }
   );
   const data = await handleResponse<RawRecipe[]>(res);

@@ -91,7 +91,7 @@ export default function SearchResultsScreen() {
                 { backgroundColor: cardBg, opacity: pressed ? 0.85 : 1 },
               ]}
               onPress={() => {
-                router.push(`/recipes/${recipe.id}`)
+                router.push(`/recipes/${recipe.id}?from=search`)
               }}
             >
               <View style={styles.cardLeft}>

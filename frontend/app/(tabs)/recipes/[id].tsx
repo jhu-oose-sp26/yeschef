@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -26,8 +26,9 @@ import { getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 export default function RecipeDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const { user: authUser } = useAuth();
+  const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,6 +174,20 @@ export default function RecipeDetailScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+      {/* Back button */}
+      <Pressable
+        onPress={() => {
+          if (from === 'browse') router.navigate('/browse');
+          else if (from === 'search') router.navigate('/search');
+          else router.back();
+        }}
+        style={styles.backBtn}
+      >
+        <ThemedText style={[styles.backText, { color: accent }]}>
+          ← {from === 'browse' ? 'Browse' : from === 'search' ? 'Search' : 'Back'}
+        </ThemedText>
+      </Pressable>
+
       {/* Hero */}
       <View style={[styles.hero, { backgroundColor: cardBg, borderColor: cardBorder }]}>
         <ThemedText type="title" style={styles.heroTitle}>{recipe.title}</ThemedText>
@@ -333,6 +348,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+  },
+  backBtn: {
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  backText: {
+    fontSize: 16,
   },
   scroll: {
     flex: 1,
