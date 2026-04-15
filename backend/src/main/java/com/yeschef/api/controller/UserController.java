@@ -134,10 +134,14 @@ public class UserController {
             return ResponseEntity.status(409).build();
         }
 
-        Friendship friendship = new Friendship();
-        friendship.setSelf(self);
-        friendship.setFriend(friend);
-        friendshipRepository.save(friendship);
+        Friendship friendshipSelfOther = new Friendship();
+        friendshipSelfOther.setSelf(self);
+        friendshipSelfOther.setFriend(friend);
+        Friendship friendshipOtherSelf = new Friendship();
+        friendshipOtherSelf.setSelf(friend);
+        friendshipOtherSelf.setFriend(self);
+        friendshipRepository.save(friendshipSelfOther);
+        friendshipRepository.save(friendshipOtherSelf);
 
         return ResponseEntity.ok().build();
     }
