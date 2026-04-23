@@ -69,8 +69,7 @@ public class RecipeController {
                             s.getStepDescription()))
                     .collect(Collectors.toList());
 
-        // return a dto object
-        return new RecipeResponseDTO(
+        RecipeResponseDTO dto = new RecipeResponseDTO(
             recipe.getId(),
             recipe.getTitle(),
             recipe.getSource().getSourceType().toString(),
@@ -78,6 +77,13 @@ public class RecipeController {
             recipe.getInstruction().getCookTime(),
             ingredients,
             steps);
+
+        if (recipe.getSource().getUser() != null) {
+            dto.setUserId(recipe.getSource().getUser().getId());
+            dto.setUsername(recipe.getSource().getUser().getUsername());
+        }
+
+        return dto;
         }
 
     // convert dto to recipe

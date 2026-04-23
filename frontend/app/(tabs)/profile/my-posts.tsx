@@ -70,7 +70,7 @@ export default function MyPostsScreen() {
           {recipes.map((recipe) => (
             <Link
               key={recipe.id}
-              href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id) } }}
+              href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'my-posts', userId } }}
               asChild
             >
               <Pressable>

@@ -150,7 +150,7 @@ export default function ProfileScreen() {
               {recentActivity.map((recipe) => (
                 <Link
                   key={recipe.id}
-                  href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id) } }}
+                  href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'profile' } }}
                   asChild
                 >
                   <Pressable>

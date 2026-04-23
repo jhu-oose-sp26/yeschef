@@ -28,18 +28,20 @@ function normalizeRecipe(recipe: RawRecipe): Recipe {
     };
   }
 
+  const dto = recipe as RecipeDtoResponse;
   return {
-    id: recipe.id,
-    title: recipe.title,
-    source: normalizeSource(recipe.source),
-    ingredients: recipe.ingredients ?? [],
+    id: dto.id,
+    title: dto.title,
+    source: normalizeSource(dto.source),
+    creatorUsername: dto.username,
+    ingredients: dto.ingredients ?? [],
     instruction:
-      recipe.prepTime != null || recipe.cookTime != null || recipe.steps != null
+      dto.prepTime != null || dto.cookTime != null || dto.steps != null
         ? {
-            id: recipe.id,
-            prepTime: recipe.prepTime ?? 0,
-            cookTime: recipe.cookTime ?? 0,
-            steps: recipe.steps ?? [],
+            id: dto.id,
+            prepTime: dto.prepTime ?? 0,
+            cookTime: dto.cookTime ?? 0,
+            steps: dto.steps ?? [],
           }
         : undefined,
   };

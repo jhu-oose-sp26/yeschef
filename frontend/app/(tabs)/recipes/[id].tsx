@@ -26,7 +26,7 @@ import { getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 export default function RecipeDetailScreen() {
-  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+  const { id, from, userId: fromUserId } = useLocalSearchParams<{ id: string; from?: string; userId?: string }>();
   const { user: authUser } = useAuth();
   const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -179,24 +179,34 @@ export default function RecipeDetailScreen() {
         onPress={() => {
           if (from === 'browse') router.navigate('/browse');
           else if (from === 'search') router.navigate('/search');
+          else if (from === 'profile') router.navigate('/(tabs)/profile');
+          else if (from === 'my-posts') router.navigate({ pathname: '/(tabs)/profile/my-posts', params: { userId: fromUserId ?? '' } });
+          else if (from === 'my-saved') router.navigate({ pathname: '/(tabs)/profile/my-saved', params: { userId: fromUserId ?? '' } });
           else router.back();
         }}
         style={styles.backBtn}
       >
         <ThemedText style={[styles.backText, { color: accent }]}>
-          ← {from === 'browse' ? 'Browse' : from === 'search' ? 'Search' : 'Back'}
+          ←{' '}
+          {from === 'browse' ? 'Browse'
+            : from === 'search' ? 'Search'
+            : from === 'profile' ? 'Profile'
+            : from === 'my-posts' ? 'My Posts'
+            : from === 'my-saved' ? 'My Saved'
+            : 'Back'}
         </ThemedText>
       </Pressable>
 
       {/* Hero */}
       <View style={[styles.hero, { backgroundColor: cardBg, borderColor: cardBorder }]}>
         <ThemedText type="title" style={styles.heroTitle}>{recipe.title}</ThemedText>
-        {recipe.source && (
+        {recipe.source?.sourceType === 'USER' && recipe.creatorUsername ? (
+          <ThemedText style={styles.source}>{recipe.creatorUsername}</ThemedText>
+        ) : recipe.source?.sourceType === 'API' ? (
           <ThemedText style={styles.source}>
-            {recipe.source.sourceType}
-            {recipe.source.api_url ? ` · ${recipe.source.api_url}` : ''}
+            API{recipe.source.api_url ? ` · ${recipe.source.api_url}` : ''}
           </ThemedText>
-        )}
+        ) : null}
         <View style={styles.pillRow}>
           {totalTime != null && (
             <View style={[styles.pill, { backgroundColor: accent + '22' }]}>
