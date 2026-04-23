@@ -26,6 +26,7 @@ export interface Recipe {
   id: number;
   title: string;
   source?: RecipeSource;
+  creatorUsername?: string;
   ingredients?: RecipeIngredient[];
   instruction?: RecipeInstruction;
   ratings?: unknown[];
@@ -47,6 +48,8 @@ export interface RecipeDtoResponse {
   id: number;
   title: string;
   source?: string;
+  userId?: number;
+  username?: string;
   prepTime?: number;
   cookTime?: number;
   ingredients?: RecipeIngredient[];

@@ -73,7 +73,7 @@ export default function MySavedScreen() {
           {recipes.map((recipe) => (
             <Link
               key={recipe.id}
-              href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id) } }}
+              href={{ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'my-saved', userId } }}
               asChild
             >
               <Pressable>
