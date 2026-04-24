@@ -1,123 +1,151 @@
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useRef } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { ThemedText } from '@/components/themed-text';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+const TEAL = '#05A8AA';
+const GREEN = '#B8D5B8';
+const TAN = '#FFEDE2';
+const RED = '#BC412B';
+
+interface TimeOption {
+  label: string;   // shown on the green card
+  sidebar: string; // shown in the sidebar
+  value: number;   // minutes passed to API (9999 = >3 hr)
+}
+
+const TIMES: TimeOption[] = [
+  { label: '5 min',   sidebar: '5',   value: 5 },
+  { label: '10 min',  sidebar: '10',  value: 10 },
+  { label: '15 min',  sidebar: '15',  value: 15 },
+  { label: '20 min',  sidebar: '20',  value: 20 },
+  { label: '25 min',  sidebar: '25',  value: 25 },
+  { label: '30 min',  sidebar: '30',  value: 30 },
+  { label: '35 min',  sidebar: '35',  value: 35 },
+  { label: '40 min',  sidebar: '40',  value: 40 },
+  { label: '45 min',  sidebar: '45',  value: 45 },
+  { label: '50 min',  sidebar: '50',  value: 50 },
+  { label: '55 min',  sidebar: '55',  value: 55 },
+  { label: '1 hr',    sidebar: '1h',  value: 60 },
+  { label: '1.5 hr',  sidebar: '1.5h', value: 90 },
+  { label: '2 hr',    sidebar: '2h',  value: 120 },
+  { label: '2.5 hr',  sidebar: '2.5h', value: 150 },
+  { label: '3 hr',    sidebar: '3h',  value: 180 },
+  { label: '> 3 hr',  sidebar: '>3h', value: 9999 },
+];
 
 export default function SearchTimeScreen() {
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  const itemOffsets = useRef<Record<string, number>>({});
 
-  const cardBg = useThemeColor({}, 'card');
-  const border = useThemeColor({}, 'cardBorder');
-  const accent = useThemeColor({}, 'accent');
-
-  const DATA = [
-    '<5 minutes',
-    '<10 minutes',
-    '<15 minutes',
-    '<20 minutes',
-    '<25 minutes',
-    '<30 minutes',
-    '<35 minutes',
-    '<40 minutes',
-    '<45 minutes',
-    '<50 minutes',
-    '<55 minutes',
-    '<1 hour',
-    '<1.5 hours',
-    '<2 hours',
-  ];
+  function jumpTo(sidebar: string) {
+    const offset = itemOffsets.current[sidebar];
+    if (offset !== undefined && scrollRef.current) {
+      scrollRef.current.scrollTo({ y: offset, animated: true });
+    }
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.screen}>
+
+      {/* ── Teal Header ── */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <ThemedText style={[styles.backText, { color: accent }]}>
-            ← Search
-          </ThemedText>
+        <Pressable onPress={() => router.navigate('/search')} hitSlop={12} style={styles.backBtn}>
+          <Text style={styles.backText}>← BACK</Text>
         </Pressable>
-
-        <ThemedText style={styles.title}>Cook Time</ThemedText>
+        <Text style={styles.headerTitle}>Search by cook time</Text>
       </View>
 
-      <View style={styles.list}>
-        {DATA.map((item) => (
-          <Pressable
-            key={item}
-            style={({ pressed }) => [
-              styles.row,
-              {
-                backgroundColor: cardBg,
-                borderColor: border,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}
-            onPress={() => {
-              const valueMap: Record<string, number> = {
-                '<5 minutes': 5,
-                '<10 minutes': 10,
-                '<15 minutes': 15,
-                '<20 minutes': 20,
-                '<25 minutes': 25,
-                '<30 minutes': 30,
-                '<35 minutes': 35,
-                '<40 minutes': 40,
-                '<45 minutes': 45,
-                '<50 minutes': 50,
-                '<55 minutes': 55,
-                '<1 hour': 60,
-                '<1.5 hours': 90,
-                '<2 hours': 120,
-              };
+      {/* ── Body: list + sidebar ── */}
+      <View style={styles.body}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        >
+          {TIMES.map((time) => (
+            <View
+              key={time.sidebar}
+              onLayout={(e) => { itemOffsets.current[time.sidebar] = e.nativeEvent.layout.y; }}
+            >
+              <View style={styles.card}>
+                <Pressable
+                  style={({ pressed }) => [styles.cardPressable, { opacity: pressed ? 0.8 : 1 }]}
+                  onPress={() => router.push(
+                    `/search/filter-results?type=time&value=${time.value}&label=${encodeURIComponent(time.label)}`
+                  )}
+                >
+                  <Text style={styles.cardText}>{time.label}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
 
-              const minutes = valueMap[item];
-              router.push(`/search/filter-results?type=time&value=${minutes}`);
-            }}
-          >
-            <ThemedText style={styles.rowText}>{item}</ThemedText>
-            <IconSymbol name="chevron.right" size={18} color={accent} />
-          </Pressable>
-        ))}
+        {/* ── Time Sidebar ── */}
+        <View style={styles.sidebar}>
+          {TIMES.map((time) => (
+            <Pressable
+              key={time.sidebar}
+              onPress={() => jumpTo(time.sidebar)}
+              hitSlop={4}
+              style={styles.sidebarBtn}
+            >
+              <Text style={styles.sidebarLabel}>{time.sidebar}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-    </ScrollView>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-  },
+  screen: { flex: 1, backgroundColor: TAN },
 
+  // ── Header ──
   header: {
-    marginBottom: 20,
-    gap: 6,
+    backgroundColor: TEAL,
+    paddingTop: 56,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
   },
+  backBtn: { marginBottom: 10 },
+  backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
+  headerTitle: { color: '#fff', fontSize: 28, fontWeight: '800' },
 
-  backText: {
-    fontSize: 16,
-  },
+  // ── Body ──
+  body: { flex: 1, flexDirection: 'row' },
+  scroll: { flex: 1 },
+  list: { padding: 16, paddingRight: 8, paddingBottom: 48 },
 
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-
-  list: {
-    gap: 10,
-  },
-
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-
-    padding: 16,
+  // ── Time card ──
+  card: {
+    backgroundColor: GREEN,
     borderRadius: 12,
-    borderWidth: 1,
+    marginBottom: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
   },
+  cardPressable: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  cardText: { fontSize: 16, fontWeight: '600', color: '#1E2A1E' },
 
-  rowText: {
-    fontSize: 16,
+  // ── Sidebar ──
+  sidebar: {
+    width: 36,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
+  sidebarBtn: { paddingVertical: 1 },
+  sidebarLabel: { fontSize: 13, fontWeight: '600', color: RED },
 });

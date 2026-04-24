@@ -2,19 +2,23 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { createRecipe } from '@/lib/api/recipes';
 import { useAuth } from '@/lib/auth/AuthContext';
+
+const TEAL = '#05A8AA';
+const GREEN = '#B8D5B8';
+const TAN = '#FFEDE2';
+const RED = '#BC412B';
 
 interface IngredientDraft {
   ingredient: string;
@@ -30,11 +34,6 @@ const emptyStep = (): StepDraft => ({ stepDescription: '' });
 
 export default function CreateScreen() {
   const { user, isLoading } = useAuth();
-  const cardBg = useThemeColor({}, 'card');
-  const cardBorder = useThemeColor({}, 'cardBorder');
-  const accent = useThemeColor({}, 'accent');
-  const backgroundColor = useThemeColor({}, 'background');
-  const textColor = useThemeColor({}, 'text');
 
   const [title, setTitle] = useState('');
   const [prepTime, setPrepTime] = useState('');
@@ -42,7 +41,6 @@ export default function CreateScreen() {
   const [ingredients, setIngredients] = useState<IngredientDraft[]>([emptyIngredient()]);
   const [steps, setSteps] = useState<StepDraft[]>([emptyStep()]);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit =
@@ -53,30 +51,26 @@ export default function CreateScreen() {
     !submitting;
 
   const updateIngredient = (index: number, key: keyof IngredientDraft, value: string) => {
-    setIngredients((current) =>
-      current.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)),
+    setIngredients((curr) =>
+      curr.map((item, i) => (i === index ? { ...item, [key]: value } : item)),
     );
   };
 
   const updateStep = (index: number, value: string) => {
-    setSteps((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, stepDescription: value } : item,
-      ),
+    setSteps((curr) =>
+      curr.map((item, i) => (i === index ? { ...item, stepDescription: value } : item)),
     );
   };
 
   const removeIngredient = (index: number) => {
-    setIngredients((current) =>
-      current.length === 1
-        ? [emptyIngredient()]
-        : current.filter((_, itemIndex) => itemIndex !== index),
+    setIngredients((curr) =>
+      curr.length === 1 ? [emptyIngredient()] : curr.filter((_, i) => i !== index),
     );
   };
 
   const removeStep = (index: number) => {
-    setSteps((current) =>
-      current.length === 1 ? [emptyStep()] : current.filter((_, itemIndex) => itemIndex !== index),
+    setSteps((curr) =>
+      curr.length === 1 ? [emptyStep()] : curr.filter((_, i) => i !== index),
     );
   };
 
@@ -87,32 +81,21 @@ export default function CreateScreen() {
     }
 
     const cleanedIngredients = ingredients
-      .map((item) => ({
-        ingredient: item.ingredient.trim(),
-        quantity: item.quantity.trim(),
-      }))
+      .map((item) => ({ ingredient: item.ingredient.trim(), quantity: item.quantity.trim() }))
       .filter((item) => item.ingredient.length > 0);
 
     const cleanedSteps = steps
       .map((item) => item.stepDescription.trim())
-      .filter((stepDescription) => stepDescription.length > 0)
-      .map((stepDescription, index) => ({
-        stepNumber: index + 1,
-        stepDescription,
-      }));
+      .filter((s) => s.length > 0)
+      .map((stepDescription, index) => ({ stepNumber: index + 1, stepDescription }));
 
-    if (
-      cleanedIngredients.length === 0 ||
-      cleanedSteps.length === 0 ||
-      title.trim().length === 0
-    ) {
-      setError('Add a title, at least one ingredient, and at least one instruction step.');
+    if (cleanedIngredients.length === 0 || cleanedSteps.length === 0 || title.trim().length === 0) {
+      setError('Add a title, at least one ingredient, and at least one step.');
       return;
     }
 
     setSubmitting(true);
     setError(null);
-    setMessage(null);
 
     try {
       const recipe = await createRecipe({
@@ -125,17 +108,14 @@ export default function CreateScreen() {
         steps: cleanedSteps,
       });
 
-      setMessage('Recipe posted successfully.');
       setTitle('');
       setPrepTime('');
       setCookTime('');
       setIngredients([emptyIngredient()]);
       setSteps([emptyStep()]);
-      router.replace({ pathname: '/recipes/[id]', params: { id: String(recipe.id) } });
-    } catch (submissionError) {
-      setError(
-        submissionError instanceof Error ? submissionError.message : 'Could not create recipe.',
-      );
+      router.replace({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'create' } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create recipe.');
     } finally {
       setSubmitting(false);
     }
@@ -144,8 +124,7 @@ export default function CreateScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={accent} />
-        <ThemedText style={styles.helper}>Loading your account…</ThemedText>
+        <ActivityIndicator size="large" color={TEAL} />
       </ThemedView>
     );
   }
@@ -153,12 +132,9 @@ export default function CreateScreen() {
   if (!user) {
     return (
       <ThemedView style={styles.centered}>
-        <ThemedText type="title" style={styles.authTitle}>
-          Create a Recipe
-        </ThemedText>
+        <ThemedText type="title" style={{ textAlign: 'center' }}>Create a Recipe</ThemedText>
         <ThemedText style={styles.authMessage}>
-          This page is for posting your own recipe to YesChef. Log in first so we can attach it to
-          your profile and show it to friends.
+          Log in so we can attach your recipe to your profile and share it with friends.
         </ThemedText>
       </ThemedView>
     );
@@ -166,271 +142,235 @@ export default function CreateScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <View style={[styles.hero, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <ThemedText type="title">Create a Recipe Post</ThemedText>
-        <ThemedText style={styles.helper}>
+
+      {/* ── Teal Hero ── */}
+      <View style={styles.hero}>
+        <Text style={styles.heroTitle}>Create Recipe</Text>
+        <Text style={styles.heroSub}>
           Share a recipe your friends can browse, save, and rate.
-        </ThemedText>
+        </Text>
       </View>
 
-      <View style={[styles.section, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Basics
-        </ThemedText>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Recipe title"
-          placeholderTextColor="#8A8A8A"
-          style={[styles.input, { backgroundColor, borderColor: cardBorder, color: textColor }]}
-        />
-        <View style={styles.row}>
+      {/* ── Form ── */}
+      <View style={styles.form}>
+
+        {/* BASICS card */}
+        <View style={styles.card}>
+          <Text style={styles.cardHeader}>BASICS</Text>
           <TextInput
-            value={prepTime}
-            onChangeText={setPrepTime}
-            placeholder="Prep (min)"
-            placeholderTextColor="#8A8A8A"
-            keyboardType="number-pad"
-            style={[
-              styles.input,
-              styles.halfInput,
-              { backgroundColor, borderColor: cardBorder, color: textColor },
-            ]}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Recipe title"
+            placeholderTextColor="#A0A0A0"
+            style={[styles.input, { color: '#333' }]}
           />
-          <TextInput
-            value={cookTime}
-            onChangeText={setCookTime}
-            placeholder="Cook (min)"
-            placeholderTextColor="#8A8A8A"
-            keyboardType="number-pad"
-            style={[
-              styles.input,
-              styles.halfInput,
-              { backgroundColor, borderColor: cardBorder, color: textColor },
-            ]}
-          />
-        </View>
-      </View>
-
-      <View style={[styles.section, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Ingredients
-          </ThemedText>
-          <Pressable onPress={() => setIngredients((current) => [...current, emptyIngredient()])}>
-            <ThemedText style={[styles.addAction, { color: accent }]}>+ Add</ThemedText>
-          </Pressable>
-        </View>
-        {ingredients.map((item, index) => (
-          <View key={`ingredient-${index}`} style={styles.stack}>
-            <View style={styles.inlineHeader}>
-              <ThemedText type="defaultSemiBold">Ingredient {index + 1}</ThemedText>
-              <Pressable onPress={() => removeIngredient(index)}>
-                <ThemedText style={styles.removeAction}>Remove</ThemedText>
-              </Pressable>
-            </View>
-            <View style={styles.row}>
-              <TextInput
-                value={item.quantity}
-                onChangeText={(value) => updateIngredient(index, 'quantity', value)}
-                placeholder="1 tbsp"
-                placeholderTextColor="#8A8A8A"
-                style={[
-                  styles.input,
-                  styles.quantityInput,
-                  { backgroundColor, borderColor: cardBorder, color: textColor },
-                ]}
-              />
-              <TextInput
-                value={item.ingredient}
-                onChangeText={(value) => updateIngredient(index, 'ingredient', value)}
-                placeholder="Olive oil"
-                placeholderTextColor="#8A8A8A"
-                style={[
-                  styles.input,
-                  styles.ingredientInput,
-                  { backgroundColor, borderColor: cardBorder, color: textColor },
-                ]}
-              />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View style={[styles.section, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Instructions
-          </ThemedText>
-          <Pressable onPress={() => setSteps((current) => [...current, emptyStep()])}>
-            <ThemedText style={[styles.addAction, { color: accent }]}>+ Add</ThemedText>
-          </Pressable>
-        </View>
-        {steps.map((item, index) => (
-          <View key={`step-${index}`} style={styles.stack}>
-            <View style={styles.inlineHeader}>
-              <ThemedText type="defaultSemiBold">Step {index + 1}</ThemedText>
-              <Pressable onPress={() => removeStep(index)}>
-                <ThemedText style={styles.removeAction}>Remove</ThemedText>
-              </Pressable>
-            </View>
+          <View style={styles.row}>
             <TextInput
-              value={item.stepDescription}
-              onChangeText={(value) => updateStep(index, value)}
-              placeholder="Describe what to do in this step"
-              placeholderTextColor="#8A8A8A"
-              multiline
-              textAlignVertical="top"
-              style={[
-                styles.input,
-                styles.textArea,
-                { backgroundColor, borderColor: cardBorder, color: textColor },
-              ]}
+              value={prepTime}
+              onChangeText={setPrepTime}
+              placeholder="Prep (min)"
+              placeholderTextColor="#A0A0A0"
+              keyboardType="number-pad"
+              style={[styles.input, styles.halfInput, { color: '#333' }]}
+            />
+            <TextInput
+              value={cookTime}
+              onChangeText={setCookTime}
+              placeholder="Cook (min)"
+              placeholderTextColor="#A0A0A0"
+              keyboardType="number-pad"
+              style={[styles.input, styles.halfInput, { color: '#333' }]}
             />
           </View>
-        ))}
-      </View>
-
-      {(error || message) && (
-        <View style={[styles.feedbackCard, { borderColor: error ? '#C0392B' : cardBorder }]}>
-          <ThemedText style={{ color: error ? '#C0392B' : textColor }}>
-            {error ?? message}
-          </ThemedText>
         </View>
-      )}
 
-      <Pressable
-        onPress={handleSubmit}
-        disabled={!canSubmit}
-        style={({ pressed }) => [
-          styles.submitButton,
-          {
-            backgroundColor: canSubmit ? accent : cardBorder,
-            opacity: pressed ? 0.9 : 1,
-          },
-        ]}>
-        {submitting ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <ThemedText style={styles.submitButtonText}>Post Recipe</ThemedText>
+        {/* INGREDIENTS card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardHeader}>INGREDIENTS</Text>
+            <Pressable
+              onPress={() => setIngredients((curr) => [...curr, emptyIngredient()])}
+              style={styles.addBtn}
+            >
+              <Text style={styles.addBtnText}>+ Add Ingredient</Text>
+            </Pressable>
+          </View>
+
+          {ingredients.map((item, index) => (
+            <View key={`ing-${index}`} style={styles.ingredientBlock}>
+              <View style={styles.inlineHeader}>
+                <Text style={styles.fieldLabel}>Ingredient {index + 1}</Text>
+                {ingredients.length > 1 && (
+                  <Pressable onPress={() => removeIngredient(index)}>
+                    <Text style={styles.removeText}>✕</Text>
+                  </Pressable>
+                )}
+              </View>
+              <View style={styles.row}>
+                <TextInput
+                  value={item.quantity}
+                  onChangeText={(v) => updateIngredient(index, 'quantity', v)}
+                  placeholder="1 tbsp"
+                  placeholderTextColor="#A0A0A0"
+                  style={[styles.input, styles.quantityInput, { color: item.quantity.length > 0 ? TEAL : '#333' }]}
+                />
+                <TextInput
+                  value={item.ingredient}
+                  onChangeText={(v) => updateIngredient(index, 'ingredient', v)}
+                  placeholder="Olive oil"
+                  placeholderTextColor="#A0A0A0"
+                  style={[styles.input, styles.ingredientInput, { color: '#333' }]}
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* INSTRUCTIONS card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardHeader}>INSTRUCTIONS</Text>
+            <Pressable
+              onPress={() => setSteps((curr) => [...curr, emptyStep()])}
+              style={styles.addBtn}
+            >
+              <Text style={styles.addBtnText}>+ Add Step</Text>
+            </Pressable>
+          </View>
+
+          {steps.map((item, index) => (
+            <View key={`step-${index}`} style={styles.stepBlock}>
+              <View style={styles.inlineHeader}>
+                <Text style={styles.fieldLabel}>STEP {index + 1}:</Text>
+                {steps.length > 1 && (
+                  <Pressable onPress={() => removeStep(index)}>
+                    <Text style={styles.removeText}>✕</Text>
+                  </Pressable>
+                )}
+              </View>
+              <TextInput
+                value={item.stepDescription}
+                onChangeText={(v) => updateStep(index, v)}
+                placeholder="Describe this step..."
+                placeholderTextColor="#A0A0A0"
+                multiline
+                textAlignVertical="top"
+                style={[styles.input, styles.textArea, { color: '#333' }]}
+              />
+            </View>
+          ))}
+        </View>
+
+        {error && (
+          <Text style={styles.errorText}>{error}</Text>
         )}
-      </Pressable>
+
+        {/* POST RECIPE button */}
+        <Pressable
+          onPress={handleSubmit}
+          disabled={!canSubmit}
+          style={({ pressed }) => [
+            styles.postBtn,
+            { opacity: !canSubmit ? 0.45 : pressed ? 0.85 : 1 },
+          ]}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.postBtnText}>POST RECIPE!</Text>
+          )}
+        </Pressable>
+
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 40,
-    gap: 18,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  authMessage: { marginTop: 10, textAlign: 'center', opacity: 0.8, maxWidth: 300, lineHeight: 22 },
+
+  scroll: { flex: 1, backgroundColor: TAN },
+  container: { paddingBottom: 48 },
+
+  // ── Hero ──
   hero: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 22,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-      },
-      android: { elevation: 2 },
-      default: {},
-    }),
+    backgroundColor: TEAL,
+    paddingHorizontal: 24,
+    paddingTop: 56,
+    paddingBottom: 28,
   },
-  section: {
+  heroTitle: { color: '#fff', fontSize: 30, fontWeight: '800', marginBottom: 6 },
+  heroSub: { color: '#fff', fontSize: 14, opacity: 0.9, lineHeight: 20 },
+
+  // ── Form wrapper ──
+  form: { padding: 20, gap: 16 },
+
+  // ── Cards ──
+  card: {
+    backgroundColor: GREEN,
     borderRadius: 18,
-    borderWidth: 1,
     padding: 18,
-    gap: 14,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  sectionTitle: {
-    marginBottom: 0,
+  cardHeader: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E2A1E',
+    letterSpacing: 0.5,
   },
-  sectionHeader: {
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+
+  // ── Inputs ──
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+  },
+  row: { flexDirection: 'row', gap: 10 },
+  halfInput: { flex: 1 },
+  quantityInput: { width: 100 },
+  ingredientInput: { flex: 1 },
+  textArea: { minHeight: 100 },
+
+  // ── Ingredient / Step blocks ──
+  ingredientBlock: { gap: 6 },
+  stepBlock: { gap: 6 },
   inlineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  stack: {
-    gap: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: '#1E2A1E', opacity: 0.7, letterSpacing: 0.3 },
+  removeText: { fontSize: 14, color: RED, fontWeight: '700' },
+
+  // ── Buttons ──
+  addBtn: {
+    backgroundColor: RED,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  halfInput: {
-    flex: 1,
-  },
-  quantityInput: {
-    width: 110,
-  },
-  ingredientInput: {
-    flex: 1,
-  },
-  textArea: {
-    minHeight: 96,
-  },
-  submitButton: {
+  addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  postBtn: {
+    backgroundColor: RED,
+    borderRadius: 14,
     minHeight: 54,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  addAction: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  removeAction: {
-    fontSize: 13,
-    color: '#C0392B',
-  },
-  helper: {
-    marginTop: 8,
-    opacity: 0.75,
-    lineHeight: 20,
-  },
-  authTitle: {
-    textAlign: 'center',
-  },
-  authMessage: {
-    marginTop: 10,
-    textAlign: 'center',
-    opacity: 0.8,
-    maxWidth: 320,
-    lineHeight: 22,
-  },
-  feedbackCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-  },
+  postBtnText: { color: '#fff', fontSize: 17, fontWeight: '800', letterSpacing: 1 },
+
+  errorText: { color: RED, fontSize: 14, textAlign: 'center' },
 });
