@@ -1,20 +1,20 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
+import { addRecentId } from '@/lib/recentRecipes';
 import {
   getRatingsForRecipe,
   getUserRatingForRecipe,
@@ -22,10 +22,18 @@ import {
   updateRating,
 } from '@/lib/api/ratings';
 import type { RatingResponse } from '@/lib/api/ratings';
-import { getUsers, getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
+import { getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
+import { useAuth } from '@/lib/auth/AuthContext';
+
+const TEAL = '#05A8AA';
+const GREEN = '#B8D5B8';
+const TAN = '#FFEDE2';
+const RED = '#BC412B';
 
 export default function RecipeDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from, userId: fromUserId, filterType, filterValue } = useLocalSearchParams<{ id: string; from?: string; userId?: string; filterType?: string; filterValue?: string }>();
+  const { user: authUser } = useAuth();
+  const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +50,6 @@ export default function RecipeDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
 
-  const cardBg = useThemeColor({}, 'card');
-  const cardBorder = useThemeColor({}, 'cardBorder');
-  const accent = useThemeColor({}, 'accent');
-  const accentMuted = useThemeColor({}, 'accentMuted');
-
   const numId = Number(id);
 
   const loadRecipe = useCallback(async () => {
@@ -58,20 +61,19 @@ export default function RecipeDetailScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [data, allRatings, users] = await Promise.all([
+      const [data, allRatings] = await Promise.all([
         getRecipe(numId),
         getRatingsForRecipe(numId).catch(() => [] as RatingResponse[]),
-        getUsers(),
       ]);
       setRecipe(data);
       setRatings(allRatings);
+      addRecentId(numId);
 
-      const user = users[0] ?? null;
-      if (user) {
-        setCurrentUserId(user.id);
+      if (authUser) {
+        setCurrentUserId(authUser.id);
         const [existing, savedList] = await Promise.all([
-          getUserRatingForRecipe(user.id, numId),
-          getSavedRecipes(user.id).catch(() => []),
+          getUserRatingForRecipe(authUser.id, numId),
+          getSavedRecipes(authUser.id).catch(() => []),
         ]);
         if (existing) {
           setMyRating(existing);
@@ -85,11 +87,22 @@ export default function RecipeDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, numId]);
+  }, [id, numId, authUser]);
 
   useEffect(() => {
     loadRecipe();
   }, [loadRecipe]);
+
+  const handleBack = () => {
+    if (from === 'create') router.navigate('/');
+    else if (from === 'filter-results') router.navigate(`/search/filter-results?type=${filterType ?? ''}&value=${filterValue ?? ''}`);
+    else if (from === 'browse') router.navigate('/browse');
+    else if (from === 'search') router.navigate('/search');
+    else if (from === 'profile') router.navigate('/(tabs)/profile');
+    else if (from === 'my-posts') router.navigate({ pathname: '/(tabs)/profile/my-posts', params: { userId: fromUserId ?? '' } });
+    else if (from === 'my-saved') router.navigate({ pathname: '/(tabs)/profile/my-saved', params: { userId: fromUserId ?? '' } });
+    else router.back();
+  };
 
   const handleToggleSave = async () => {
     if (!currentUserId) return;
@@ -103,7 +116,7 @@ export default function RecipeDetailScreen() {
         setIsSaved(true);
       }
     } catch (e) {
-      // silently ignore — state stays unchanged
+      // silently ignore
     } finally {
       setSavingToggle(false);
     }
@@ -128,7 +141,6 @@ export default function RecipeDetailScreen() {
       }
       setMyRating(saved);
       setSubmitMsg(myRating ? 'Rating updated!' : 'Rating submitted!');
-
       const refreshed = await getRatingsForRecipe(numId).catch(() => ratings);
       setRatings(refreshed);
     } catch (e) {
@@ -141,7 +153,7 @@ export default function RecipeDetailScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={accent} />
+        <ActivityIndicator size="large" color={TEAL} />
         <ThemedText style={{ marginTop: 12 }}>Loading recipe…</ThemedText>
       </ThemedView>
     );
@@ -150,17 +162,12 @@ export default function RecipeDetailScreen() {
   if (error || !recipe) {
     return (
       <ThemedView style={styles.centered}>
-        <ThemedText type="subtitle" style={styles.error}>
+        <ThemedText type="subtitle" style={styles.errorText}>
           {error ?? 'Recipe not found'}
         </ThemedText>
       </ThemedView>
     );
   }
-
-  const totalTime =
-    recipe.instruction != null
-      ? recipe.instruction.prepTime + recipe.instruction.cookTime
-      : null;
 
   const avgTaste =
     ratings.length > 0
@@ -173,352 +180,310 @@ export default function RecipeDetailScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      {/* Hero */}
-      <View style={[styles.hero, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <ThemedText type="title" style={styles.heroTitle}>{recipe.title}</ThemedText>
-        {recipe.source && (
-          <ThemedText style={styles.source}>
-            {recipe.source.sourceType}
-            {recipe.source.api_url ? ` · ${recipe.source.api_url}` : ''}
-          </ThemedText>
-        )}
-        <View style={styles.pillRow}>
-          {totalTime != null && (
-            <View style={[styles.pill, { backgroundColor: accent + '22' }]}>
-              <ThemedText style={[styles.pillText, { color: accent }]}>
-                {totalTime} min total
-              </ThemedText>
+
+      {/* ── Teal Hero ── */}
+      <View style={styles.hero}>
+        <Pressable onPress={handleBack} style={styles.backBtn}>
+          <Text style={styles.backText}>← BACK</Text>
+        </Pressable>
+
+        <Text style={styles.heroTitle}>{recipe.title}</Text>
+
+        {recipe.source?.sourceType === 'USER' && recipe.creatorUsername ? (
+          <Text style={styles.byUsername}>by @{recipe.creatorUsername}</Text>
+        ) : recipe.source?.sourceType === 'API' ? (
+          <Text style={styles.byUsername}>via API</Text>
+        ) : null}
+
+        <View style={styles.timePillRow}>
+          {recipe.instruction?.prepTime != null && (
+            <View style={styles.timePill}>
+              <Text style={styles.timePillText}>prep {recipe.instruction.prepTime} min</Text>
             </View>
           )}
-          {avgTaste != null && (
-            <View style={[styles.pill, { backgroundColor: '#F5A62322' }]}>
-              <ThemedText style={[styles.pillText, { color: '#D4920B' }]}>
-                ★ {avgTaste.toFixed(1)} taste
-              </ThemedText>
+          {recipe.instruction?.cookTime != null && (
+            <View style={styles.timePill}>
+              <Text style={styles.timePillText}>cook {recipe.instruction.cookTime} min</Text>
             </View>
           )}
         </View>
+
         {currentUserId != null && (
           <Pressable
             onPress={handleToggleSave}
             disabled={savingToggle}
-            style={({ pressed }) => [
-              styles.saveBtn,
-              {
-                backgroundColor: isSaved ? accent : 'transparent',
-                borderColor: accent,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}
+            style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
           >
             {savingToggle ? (
-              <ActivityIndicator size="small" color={isSaved ? '#fff' : accent} />
-            ) : (
-              <ThemedText style={[styles.saveBtnText, { color: isSaved ? '#fff' : accent }]}>
-                {isSaved ? '✓ Saved' : '+ Save recipe'}
-              </ThemedText>
-            )}
-          </Pressable>
-        )}
-      </View>
-
-      {/* Ratings summary */}
-      <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Ratings</ThemedText>
-        {ratings.length === 0 ? (
-          <ThemedText style={styles.emptyNote}>
-            No ratings yet — be the first to rate this recipe!
-          </ThemedText>
-        ) : (
-          <View style={styles.ratingSummary}>
-            <View style={styles.ratingRow}>
-              <ThemedText style={styles.ratingLabel}>Taste quality</ThemedText>
-              <StarRating value={avgTaste ?? 0} size={20} />
-              <ThemedText style={styles.ratingValue}>{avgTaste!.toFixed(1)}</ThemedText>
-            </View>
-            <View style={styles.ratingRow}>
-              <ThemedText style={styles.ratingLabel}>Ease of making</ThemedText>
-              <StarRating value={avgEase ?? 0} size={20} />
-              <ThemedText style={styles.ratingValue}>{avgEase!.toFixed(1)}</ThemedText>
-            </View>
-            <ThemedText style={styles.ratingCount}>
-              Based on {ratings.length} {ratings.length === 1 ? 'rating' : 'ratings'}
-            </ThemedText>
-          </View>
-        )}
-      </View>
-
-      {/* Rate this recipe */}
-      {currentUserId != null && (
-        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            {myRating ? 'Update your rating' : 'Rate this recipe'}
-          </ThemedText>
-
-          <View style={styles.draftRow}>
-            <ThemedText style={styles.draftLabel}>Taste quality</ThemedText>
-            <StarRating value={tasteDraft} onChange={setTasteDraft} size={28} />
-          </View>
-          <View style={styles.draftRow}>
-            <ThemedText style={styles.draftLabel}>Ease of making</ThemedText>
-            <StarRating value={easeDraft} onChange={setEaseDraft} size={28} />
-          </View>
-
-          <Pressable
-            onPress={handleSubmitRating}
-            disabled={submitting || tasteDraft === 0 || easeDraft === 0}
-            style={({ pressed }) => [
-              styles.submitBtn,
-              {
-                backgroundColor:
-                  tasteDraft === 0 || easeDraft === 0 ? accentMuted : accent,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}
-          >
-            {submitting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <ThemedText style={styles.submitBtnText}>
-                {myRating ? 'Update rating' : 'Submit rating'}
-              </ThemedText>
+              <Text style={styles.saveBtnText}>
+                {isSaved ? '✓ Saved' : '+ Save recipe'}
+              </Text>
             )}
           </Pressable>
+        )}
+      </View>
 
-          {submitMsg && (
-            <ThemedText style={styles.submitMsg}>{submitMsg}</ThemedText>
-          )}
-        </View>
-      )}
+      {/* ── Green Ratings Section ── */}
+      <View style={styles.ratingsSection}>
+        <Text style={styles.ratingsHeader}>RATINGS</Text>
 
-      {/* Ingredients */}
-      {recipe.ingredients && recipe.ingredients.length > 0 && (
-        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>Ingredients</ThemedText>
-          {recipe.ingredients.map((ing, i) => (
-            <View key={i} style={styles.ingredientRow}>
-              <View style={[styles.bullet, { backgroundColor: accent }]} />
-              <ThemedText style={styles.ingredient}>
-                {ing.quantity ? `${ing.quantity} ` : ''}{ing.ingredient}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Instructions */}
-      {recipe.instruction && (
-        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>Instructions</ThemedText>
-          <ThemedText style={styles.meta}>
-            Prep {recipe.instruction.prepTime} min · Cook {recipe.instruction.cookTime} min
-          </ThemedText>
-          {recipe.instruction.steps?.map((step, i) => (
-            <View key={i} style={styles.stepRow}>
-              <View style={[styles.stepNum, { backgroundColor: accent }]}>
-                <ThemedText style={styles.stepNumText}>{step.stepNumber}</ThemedText>
+        {ratings.length === 0 ? (
+          <Text style={styles.emptyNote}>No ratings yet — be the first to rate!</Text>
+        ) : (
+          <View style={styles.ratingsSummaryRow}>
+            <View style={styles.ratingCol}>
+              <Text style={styles.ratingColLabel}>taste</Text>
+              <View style={styles.ratingStarRow}>
+                <StarRating value={avgTaste ?? 0} size={20} />
+                <Text style={styles.ratingNum}>{avgTaste!.toFixed(1)}</Text>
               </View>
-              <ThemedText style={styles.step}>{step.stepDescription}</ThemedText>
             </View>
-          ))}
-        </View>
-      )}
+            <View style={styles.ratingCol}>
+              <Text style={styles.ratingColLabel}>ease of making</Text>
+              <View style={styles.ratingStarRow}>
+                <StarRating value={avgEase ?? 0} size={20} />
+                <Text style={styles.ratingNum}>{avgEase!.toFixed(1)}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {currentUserId != null && (
+          <>
+            <View style={styles.ratingsDivider} />
+            <Text style={styles.updateRatingHeader}>UPDATE RATING</Text>
+
+            <View style={styles.draftRow}>
+              <Text style={styles.draftLabel}>taste</Text>
+              <StarRating value={tasteDraft} onChange={setTasteDraft} size={26} />
+            </View>
+            <View style={styles.draftRow}>
+              <Text style={styles.draftLabel}>ease of making</Text>
+              <StarRating value={easeDraft} onChange={setEaseDraft} size={26} />
+            </View>
+
+            <View style={styles.submitRow}>
+              <Pressable
+                onPress={handleSubmitRating}
+                disabled={submitting || tasteDraft === 0 || easeDraft === 0}
+                style={({ pressed }) => [
+                  styles.submitBtn,
+                  { opacity: (submitting || tasteDraft === 0 || easeDraft === 0) ? 0.45 : pressed ? 0.8 : 1 },
+                ]}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitBtnText}>Submit</Text>
+                )}
+              </Pressable>
+            </View>
+
+            {submitMsg && <Text style={styles.submitMsg}>{submitMsg}</Text>}
+          </>
+        )}
+      </View>
+
+      {/* ── Tan Content Section ── */}
+      <View style={styles.contentSection}>
+
+        {recipe.ingredients && recipe.ingredients.length > 0 && (
+          <>
+            <Text style={styles.contentHeader}>Ingredients</Text>
+            <View style={styles.ingredientGrid}>
+              {recipe.ingredients.map((ing, i) => (
+                <View key={i} style={styles.ingredientBox}>
+                  {ing.quantity ? (
+                    <Text style={styles.ingredientQty}>{ing.quantity}</Text>
+                  ) : null}
+                  <Text style={styles.ingredientName}>{ing.ingredient}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {recipe.instruction?.steps && recipe.instruction.steps.length > 0 && (
+          <>
+            <Text style={[styles.contentHeader, { marginTop: 28 }]}>STEPS:</Text>
+            {recipe.instruction.steps.map((step, i) => (
+              <View key={i} style={styles.stepRow}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>{step.stepNumber}</Text>
+                </View>
+                <Text style={styles.stepText}>{step.stepDescription}</Text>
+              </View>
+            ))}
+          </>
+        )}
+      </View>
+
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  scroll: {
-    flex: 1,
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 40,
-  },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  errorText: { color: '#c00' },
+  scroll: { flex: 1, backgroundColor: TAN },
+  container: { paddingBottom: 48 },
+
+  // ── Hero (teal) ──
   hero: {
-    padding: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-      },
-      android: { elevation: 3 },
-      default: {},
-    }),
+    backgroundColor: TEAL,
+    paddingHorizontal: 24,
+    paddingTop: 56,
+    paddingBottom: 30,
   },
+  backBtn: { marginBottom: 20 },
+  backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
   heroTitle: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: '800',
     marginBottom: 6,
-    paddingRight: 8,
+    lineHeight: 38,
   },
-  source: {
-    fontSize: 14,
-    opacity: 0.8,
-    marginBottom: 12,
+  byUsername: { color: '#fff', fontSize: 15, opacity: 0.9, marginBottom: 18 },
+  timePillRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 20 },
+  timePill: {
+    backgroundColor: RED,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 24,
   },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  pill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  pillText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  timePillText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   saveBtn: {
     alignSelf: 'flex-start',
-    marginTop: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 9,
+    borderRadius: 24,
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 120,
+    borderColor: 'rgba(255,255,255,0.7)',
   },
-  saveBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
+  saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+
+  // ── Ratings (green card) ──
+  ratingsSection: {
+    backgroundColor: GREEN,
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 8,
+    borderRadius: 18,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  sectionCard: {
-    padding: 20,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 18,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
-      android: { elevation: 2 },
-      default: {},
-    }),
-  },
-  sectionTitle: {
+  ratingsHeader: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1E2A1E',
     marginBottom: 14,
+    letterSpacing: 0.5,
   },
-  meta: {
-    marginBottom: 12,
-    fontSize: 14,
-    opacity: 0.85,
-  },
-  ingredientRow: {
+  ratingsSummaryRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 12,
+    justifyContent: 'space-between',
   },
-  bullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  ratingCol: { gap: 4 },
+  ratingColLabel: { fontSize: 13, color: '#1E2A1E', opacity: 0.75, fontWeight: '500' },
+  ratingStarRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ratingNum: { fontSize: 14, fontWeight: '700', color: '#1E2A1E' },
+  emptyNote: { fontSize: 14, color: '#1E2A1E', opacity: 0.65, fontStyle: 'italic' },
+  ratingsDivider: {
+    height: 1.5,
+    backgroundColor: '#1E2A1E',
+    opacity: 0.15,
+    marginVertical: 18,
   },
-  ingredient: {
-    flex: 1,
+  updateRatingHeader: {
     fontSize: 15,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    fontWeight: '800',
+    color: '#1E2A1E',
     marginBottom: 14,
-    gap: 12,
+    letterSpacing: 0.5,
   },
-  stepNum: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepNumText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  step: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  error: {
-    color: '#c00',
-  },
-  // Ratings summary
-  ratingSummary: {
-    gap: 10,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  ratingLabel: {
-    width: 120,
-    fontSize: 14,
-  },
-  ratingValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    minWidth: 30,
-  },
-  ratingCount: {
-    marginTop: 6,
-    fontSize: 13,
-    opacity: 0.7,
-  },
-  emptyNote: {
-    fontSize: 14,
-    opacity: 0.7,
-    fontStyle: 'italic',
-  },
-  // Rate form
   draftRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  draftLabel: { fontSize: 14, color: '#1E2A1E', fontWeight: '600' },
+  submitRow: { alignItems: 'flex-end', marginTop: 6 },
+  submitBtn: {
+    backgroundColor: RED,
+    paddingHorizontal: 28,
+    paddingVertical: 11,
+    borderRadius: 24,
+  },
+  submitBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  submitMsg: { marginTop: 10, fontSize: 13, color: '#1E2A1E', textAlign: 'center', opacity: 0.8 },
+
+  // ── Content (tan background, no card) ──
+  contentSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  contentHeader: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#2C1A0E',
+    marginBottom: 16,
+    letterSpacing: 0.3,
+  },
+  ingredientGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  ingredientBox: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#2C1A0E',
+    padding: 10,
+    width: '30%',
+    minHeight: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ingredientQty: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: TEAL,
+    textAlign: 'center',
+  },
+  ingredientName: {
+    fontSize: 13,
+    color: '#2C1A0E',
+    textAlign: 'center',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: 16,
     gap: 12,
   },
-  draftLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    flex: 1,
-  },
-  submitBtn: {
-    paddingVertical: 14,
-    borderRadius: 12,
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: RED,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    flexShrink: 0,
   },
-  submitBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  submitMsg: {
-    marginTop: 10,
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.85,
-  },
+  stepBadgeText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  stepText: { flex: 1, fontSize: 15, lineHeight: 23, color: '#2C1A0E' },
 });

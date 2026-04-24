@@ -7,6 +7,8 @@ public class RecipeResponseDTO {
     private Long id;
     private String title;
     private String source;
+    private Long userId;
+    private String username;
     private int prepTime;
     private int cookTime;
     private List<InstructionStepDTO> steps;
@@ -53,6 +55,8 @@ public class RecipeResponseDTO {
     public Long getId() { return id; }
     public String getTitle() { return title; }
     public String getSource() { return source; }
+    public Long getUserId() { return userId; }
+    public String getUsername() { return username; }
     public int getPrepTime() { return prepTime; }
     public int getCookTime() { return cookTime; }
     public List<IngredientDTO> getIngredients() { return ingredients; }
@@ -61,6 +65,8 @@ public class RecipeResponseDTO {
     public void setId(Long id) { this.id = id; }
     public void setTitle(String title) { this.title = title; }
     public void setSource(String source) { this.source = source; }
+    public void setUserId(Long userId) { this.userId = userId; }
+    public void setUsername(String username) { this.username = username; }
     public void setPrepTime(int prepTime) { this.prepTime = prepTime; }
     public void setCookTime(int cookTime) { this.cookTime = cookTime; }
     public void setIngredients(List<IngredientDTO> ingredients) { this.ingredients = ingredients; }

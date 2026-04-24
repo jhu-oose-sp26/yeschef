@@ -4,8 +4,13 @@
  * - Physical device / emulator: use your machine's LAN IP, e.g. http://192.168.1.x:8080
  * Backend must allow CORS from this origin and permit GET /recipes for validation.
  */
+
+console.log('DEBUG: NEXT_PUBLIC_API_URL is:', process.env.NEXT_PUBLIC_API_URL);
+console.log('DEBUG: EXPO_PUBLIC_API_URL is:', process.env.EXPO_PUBLIC_API_URL);
+
 export const API_BASE_URL =
-  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) ||
+  process.env.NEXT_PUBLIC_API_URL || 
+  process.env.EXPO_PUBLIC_API_URL ||
   'http://localhost:8080';
 
 export function recipesUrl(path = '') {
@@ -22,4 +27,8 @@ export function savedUrl(userId: number, path = '') {
 
 export function ratingsUrl(path = '') {
   return `${API_BASE_URL}/ratings${path}`;
+}
+
+export function authUrl(path = '') {
+  return `${API_BASE_URL}/auth${path}`;
 }

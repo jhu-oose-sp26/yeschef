@@ -166,11 +166,11 @@ _For API endpoint details, see the controller source at [`backend/src/main/java/
 - [x] Rate recipes on taste quality and ease of execution
 - [x] Upload personal recipes
 - [x] Discover recipes from external sources (e.g. NYT Cooking)
-- [ ] View friends' recipes and social feed
+- [x] View friends' recipes and social feed
 - [x] User profile with stats and personal cookbook
-- [ ] Search and filter ingredients, recipe time, and difficulty
+- [x] Search and filter ingredients, recipe time, and difficulty
 - [x] Save recipes to a personal collection
-- [ ] Cross-device authentication
+- [x] Cross-device authentication
 
 ### Nice to Have
 - [ ] Recipe recommendations based on activity
@@ -187,6 +187,18 @@ See the [open issues](https://github.com/jhu-oose-sp26/yeschef/issues) for a ful
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+<!-- DEPLOYMENT -->
+## Deployment
+* **Web Application:** Live app hosted on Vercel
+  * [Click here to open](https://yeschef-sigma.vercel.app)
+    * Sign up or Sign in to start using
+    * Need to verify your email to create an account
+      * You will receive a link in your email - just click on it (doesn't matter what page it takes you to for now)
+* **Backend:** REST API hosted on Render
+  * https://yeschef-7zi4.onrender.com
+  * The first time you make an API call, the server may take several minutes to wake up. 
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 <!-- CONTRIBUTING -->

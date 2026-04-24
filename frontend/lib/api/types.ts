@@ -1,6 +1,6 @@
 /** Mirrors backend Recipe model for API responses. */
 export interface RecipeSource {
-  id: number;
+  id?: number;
   sourceType: 'API' | 'USER';
   api_url?: string;
 }
@@ -26,11 +26,34 @@ export interface Recipe {
   id: number;
   title: string;
   source?: RecipeSource;
+  creatorUsername?: string;
   ingredients?: RecipeIngredient[];
   instruction?: RecipeInstruction;
   ratings?: unknown[];
   likes?: unknown[];
   saves?: unknown[];
+}
+
+export interface RecipeCreateRequest {
+  title: string;
+  sourceType: 'API' | 'USER';
+  userId?: number;
+  prepTime: number;
+  cookTime: number;
+  steps: InstructionStep[];
+  ingredients: RecipeIngredient[];
+}
+
+export interface RecipeDtoResponse {
+  id: number;
+  title: string;
+  source?: string;
+  userId?: number;
+  username?: string;
+  prepTime?: number;
+  cookTime?: number;
+  ingredients?: RecipeIngredient[];
+  steps?: InstructionStep[];
 }
 
 /** Rating from GET /ratings endpoints. */

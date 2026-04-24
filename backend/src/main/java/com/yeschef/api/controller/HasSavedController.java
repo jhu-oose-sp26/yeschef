@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,28 +18,34 @@ import com.yeschef.api.model.User;
 import com.yeschef.api.repository.HasSavedRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
+import com.yeschef.api.service.AuthenticatedUserService;
 
 // This controller exposes REST endpoints for saving and unsaving recipes per user.
 @RestController
 @RequestMapping("/users/{userId}/saved")
+@CrossOrigin(origins = "*")
 public class HasSavedController {
 
     private final HasSavedRepository hasSavedRepository;
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
+    private final AuthenticatedUserService authenticatedUserService;
 
     public HasSavedController(HasSavedRepository hasSavedRepository,
                               UserRepository userRepository,
-                              RecipeRepository recipeRepository) {
+                              RecipeRepository recipeRepository,
+                              AuthenticatedUserService authenticatedUserService) {
         this.hasSavedRepository = hasSavedRepository;
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
     // Handle GET requests to /users/{userId}/saved
     // Returns all recipes saved by a given user
     @GetMapping
     public ResponseEntity<List<HasSaved>> getSavedRecipes(@PathVariable Long userId) {
+        authenticatedUserService.requireCurrentUser(userId);
         if (!userRepository.existsById(userId)) {
             return ResponseEntity.notFound().build();
         }
@@ -50,10 +57,7 @@ public class HasSavedController {
     // Saves a recipe for a user. Returns 409 if already saved.
     @PostMapping("/{recipeId}")
     public ResponseEntity<HasSaved> saveRecipe(@PathVariable Long userId, @PathVariable Long recipeId) {
-        Optional<User> userMaybe = userRepository.findById(userId);
-        if (userMaybe.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
+        User currentUser = authenticatedUserService.requireCurrentUser(userId);
 
         Optional<Recipe> recipeMaybe = recipeRepository.findById(recipeId);
         if (recipeMaybe.isEmpty()) {
@@ -67,7 +71,7 @@ public class HasSavedController {
         }
 
         HasSaved hasSaved = new HasSaved();
-        hasSaved.setUser(userMaybe.get());
+        hasSaved.setUser(currentUser);
         hasSaved.setRecipe(recipeMaybe.get());
         return ResponseEntity.ok(hasSavedRepository.save(hasSaved));
     }
@@ -76,6 +80,7 @@ public class HasSavedController {
     // Unsaves a recipe for a user. Returns 404 if the save entry doesn't exist.
     @DeleteMapping("/{recipeId}")
     public ResponseEntity<Void> unsaveRecipe(@PathVariable Long userId, @PathVariable Long recipeId) {
+        authenticatedUserService.requireCurrentUser(userId);
         Optional<HasSaved> hasSaved = hasSavedRepository.findByUser_IdAndRecipe_Id(userId, recipeId);
         if (hasSaved.isEmpty()) {
             return ResponseEntity.notFound().build();
