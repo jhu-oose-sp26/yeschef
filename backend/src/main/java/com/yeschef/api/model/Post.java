@@ -37,9 +37,6 @@ public class Post {
 
     public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return this.id;
-    }
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

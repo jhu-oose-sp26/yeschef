@@ -21,21 +21,17 @@ import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.DTO.RecipeResponseDTO;
 import com.yeschef.api.DTO.RecipeRequestDTO;
-import com.yeschef.api.DTO.InstructionDTO.InstructionStepDTO;
 import com.yeschef.api.model.Instruct;
-import com.yeschef.api.model.Recipe;
 import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.model.User;
-import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.RecipeSourceRepository;
-import com.yeschef.api.repository.UserRepository;
+import com.yeschef.api.service.SupabaseStorageService;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
+
 
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import jakarta.persistence.PostRemove;
 
 // This controller exposes REST endpoints related to posts
 @RestController
@@ -43,20 +39,24 @@ import jakarta.persistence.PostRemove;
 @CrossOrigin(origins = "*")
 public class PostController {
 
+    private final SupabaseStorageService storageService;
     private final RecipeRepository recipeRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final RecipeSourceRepository sourceRepository;
+    
 
     public PostController(
         PostRepository postRepository,
         RecipeRepository recipeRepository,
         RecipeSourceRepository sourceRepository,
-        UserRepository userRepository) {
+        UserRepository userRepository,
+        SupabaseStorageService storageService) {
         this.postRepository = postRepository;
         this.recipeRepository = recipeRepository;
         this.sourceRepository = sourceRepository;
         this.userRepository = userRepository;
+        this.storageService = storageService;
     }
 
     // GET ALL
@@ -106,7 +106,7 @@ public class PostController {
         int time = Integer.parseInt(maxTime);
 
         return ResponseEntity.ok(
-            postRepository.findByRecipe_Instruction_PrepTimePlusCookTimeLessThanEqual(time)
+            postRepository.findByTotalTimeLessThanEqual(time)
                 .stream()
                 .map(this::toPostDTO)
                 .toList()
@@ -160,6 +160,16 @@ public class PostController {
                 return ResponseEntity.ok(toPostDTO(postRepository.save(post)));
             })
             .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/upload-image")
+    public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String url = storageService.uploadImage(file);
+            return ResponseEntity.ok(Map.of("url", url));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     // DELETE
