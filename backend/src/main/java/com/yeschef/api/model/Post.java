@@ -23,6 +23,11 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments;
 
+    public void setId(Long id) { this.id = id; }
+
+    public Long getId() {
+        return this.id;
+    }
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
