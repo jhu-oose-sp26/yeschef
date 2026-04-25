@@ -48,6 +48,7 @@ public class Post {
     public void setRecipe(Recipe recipe) { this.recipe = recipe; }
     public void setImage(String image) { this.image = image; }
 
+    public Long getId() { return this.id; }
     public Recipe getRecipe() { return this.recipe; }
     public String getImage() { return this.image; }
     public List<Comment> getComments() { return comments; }
