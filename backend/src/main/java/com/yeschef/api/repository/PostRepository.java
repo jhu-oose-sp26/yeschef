@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.yeschef.api.model.Post;
 
@@ -17,7 +19,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     List<Post> findByRecipe_Ingredients_IngredientIgnoreCase(String ingredient);
 
-    List<Post> findByRecipe_Instruction_PrepTimePlusCookTimeLessThanEqual(int maxTime);
+    @Query("SELECT p FROM Post p WHERE (p.recipe.instruction.prepTime + p.recipe.instruction.cookTime) <= :maxTime")
+    List<Post> findByTotalTimeLessThanEqual(@Param("maxTime") int maxTime);
 
     List<Post> findByRecipe_TitleContainingIgnoreCase(String name);
 }

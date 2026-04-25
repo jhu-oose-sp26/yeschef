@@ -106,7 +106,7 @@ public class PostController {
         int time = Integer.parseInt(maxTime);
 
         return ResponseEntity.ok(
-            postRepository.findByRecipe_Instruction_PrepTimePlusCookTimeLessThanEqual(time)
+            postRepository.findByTotalTimeLessThanEqual(time)
                 .stream()
                 .map(this::toPostDTO)
                 .toList()
