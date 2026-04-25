@@ -23,6 +23,11 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments;
 
+    public void setId(Long id) { this.id = id; }
+
+    public Long getId() {
+        return this.id;
+    }
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -31,6 +36,7 @@ public class Post {
         this.createdAt = Instant.now();
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     public void setImage(String image) {
         this.image = image;
@@ -54,6 +60,10 @@ public class Post {
     public void setRecipe(Recipe recipe) { this.recipe = recipe; }
     public void setImage(String image) { this.image = image; }
 >>>>>>> main
+=======
+    public void setRecipe(Recipe recipe) { this.recipe = recipe; }
+    public void setImage(String image) { this.image = image; }
+>>>>>>> de39f9d104076b8b1ecaaf25b24ff26a337f51c2
 
     public Long getId() { return this.id; }
     public Recipe getRecipe() { return this.recipe; }
