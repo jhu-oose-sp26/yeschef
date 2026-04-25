@@ -54,5 +54,5 @@ public class Post {
     public Recipe getRecipe() { return this.recipe; }
     public String getImage() { return this.image; }
     public List<Comment> getComments() { return comments; }
-    public Instant getCreatedAt() { return createdAt; }
+    public Instant getCreatedAt() { return createdAt; } 
 }
