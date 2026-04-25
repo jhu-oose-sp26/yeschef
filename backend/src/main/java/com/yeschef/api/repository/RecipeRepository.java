@@ -1,6 +1,7 @@
 package com.yeschef.api.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -71,5 +72,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     WHERE LOWER(r.title) LIKE LOWER(CONCAT('%', :name, '%'))
     """)
     List<Recipe> findByName(@Param("name") String name);
+
+    Optional<Recipe> findByTitleIgnoreCase(String title);
 }
 
