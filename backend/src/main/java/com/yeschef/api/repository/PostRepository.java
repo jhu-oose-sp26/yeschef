@@ -21,3 +21,4 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     List<Post> findByRecipe_TitleContainingIgnoreCase(String name);
 }
+

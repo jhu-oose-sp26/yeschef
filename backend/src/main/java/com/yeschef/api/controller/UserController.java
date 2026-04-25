@@ -115,9 +115,8 @@ public class UserController {
     public ResponseEntity<List<String>> getFriends(@PathVariable Long id) {
         return userRepository.findById(id)
             .map(user -> {
-                List<String> friends = user.getFriendships().stream()
-                    .map(f -> f.getFriend().getId().equals(id) ? f.getSelf().getUsername() : f.getFriend().getUsername())
-                    .distinct()
+                List<String> friends = user.getFriendshipsSent().stream()
+                    .map(f -> f.getFriend().getUsername())
                     .collect(Collectors.toList());
                 return ResponseEntity.ok(friends);
             })
@@ -154,6 +153,13 @@ public class UserController {
         friendshipRepository.save(friendshipSelfOther);
         friendshipRepository.save(friendshipOtherSelf);
 
+        if (friendshipRepository.findBySelfAndFriend(friend, self).isEmpty()) {
+            Friendship reverse = new Friendship();
+            reverse.setSelf(friend);
+            reverse.setFriend(self);
+            friendshipRepository.save(reverse);
+        }
+
         return ResponseEntity.ok().build();
     }
 
@@ -168,14 +174,14 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
 
-        Optional<Friendship> connection = friendshipRepository.findBySelfAndFriend(selfMaybe.get(), friendMaybe.get());
-        
-        if (connection.isPresent()) {
-            friendshipRepository.delete(connection.get());
-            return ResponseEntity.noContent().build();
-        }
+        // Delete both directions to fully remove the mutual friendship
+        Optional<Friendship> forward = friendshipRepository.findBySelfAndFriend(selfMaybe.get(), friendMaybe.get());
+        forward.ifPresent(friendshipRepository::delete);
 
-        return ResponseEntity.notFound().build();
+        Optional<Friendship> reverse = friendshipRepository.findBySelfAndFriend(friendMaybe.get(), selfMaybe.get());
+        reverse.ifPresent(friendshipRepository::delete);
+
+        return ResponseEntity.noContent().build();
     }
 
     // GET: get all recipes created by a user
