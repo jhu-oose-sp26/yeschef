@@ -4,6 +4,7 @@ import React from 'react';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
+
 export default function TabLayout() {
   return (
     <Tabs
@@ -36,8 +37,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="browse"
         options={{
-          title: 'Browse',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="books.vertical.fill" color={color} />,
+          title: 'Friends',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
         }}
       />
       <Tabs.Screen

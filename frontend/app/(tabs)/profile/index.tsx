@@ -170,6 +170,7 @@ export default function ProfileScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => router.push({ pathname: '/profile/my-friends', params: { userId: String(userId ?? '') } })}
           >
             <Text style={styles.navBtnText}>View my friends</Text>
             <Text style={styles.navChevron}>›</Text>

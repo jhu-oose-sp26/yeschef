@@ -69,6 +69,12 @@ export default function SearchScreen() {
           >
             <Text style={styles.filterText}>cook time</Text>
           </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.filterCard, { opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => router.push('/search/results')}
+          >
+            <Text style={styles.filterText}>all recipes</Text>
+          </Pressable>
         </View>
 
         {/* RECENTS */}

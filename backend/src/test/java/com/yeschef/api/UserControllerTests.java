@@ -175,7 +175,7 @@ class UserControllerTests {
                 .with(csrf()))
             .andExpect(status().isOk());
 
-        verify(friendshipRepository, times(1)).save(any(Friendship.class));
+        verify(friendshipRepository, times(2)).save(any(Friendship.class));
     }
 
     @Test

@@ -61,6 +61,24 @@ export async function getUserRecipes(userId: number): Promise<Recipe[]> {
   return normalizeRecipes(data);
 }
 
+/** POST /users/{userId}/friends/{friendId} - add a friend (creates mutual friendship). */
+export async function addFriend(userId: number, friendId: number): Promise<void> {
+  const res = await fetch(usersUrl(`/${userId}/friends/${friendId}`), {
+    method: 'POST',
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  return handleResponse<void>(res);
+}
+
+/** DELETE /users/{userId}/friends/{friendId} - remove a friend (removes both directions). */
+export async function removeFriend(userId: number, friendId: number): Promise<void> {
+  const res = await fetch(usersUrl(`/${userId}/friends/${friendId}`), {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  });
+  return handleResponse<void>(res);
+}
+
 /** POST /users/{userId}/saved/{recipeId} - save a recipe for a user. */
 export async function saveRecipe(userId: number, recipeId: number): Promise<HasSaved> {
   const res = await fetch(savedUrl(userId, `/${recipeId}`), {
