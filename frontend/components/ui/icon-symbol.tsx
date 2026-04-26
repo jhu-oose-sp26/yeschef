@@ -25,6 +25,8 @@ const MAPPING = {
   'star.fill': 'star',
   'star': 'star-border',
   'plus.circle': 'add-circle-outline',
+  'plus': 'add',
+  'person.2.fill': 'group',
   'books.vertical.fill': 'library-books',
   'xmark': 'close',
   'bookmark.fill': 'bookmark',

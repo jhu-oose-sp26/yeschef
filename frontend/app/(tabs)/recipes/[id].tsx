@@ -27,10 +27,31 @@ import type { RatingResponse } from '@/lib/api/ratings';
 import { getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 
-const TEAL = '#05A8AA';
+const DARK = '#1A1208';
 const GREEN = '#B8D5B8';
 const TAN = '#FFEDE2';
 const RED = '#BC412B';
+const TEAL = '#05A8AA';
+const CREAM = '#FFF8F2';
+
+function RatingDots({ value, size = 14 }: { value: number; size?: number }) {
+  const filled = Math.round(value);
+  return (
+    <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <View
+          key={i}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: i <= filled ? RED : 'rgba(255,255,255,0.25)',
+          }}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function RecipeDetailScreen() {
   const { id, from, userId: fromUserId, filterType, filterValue } = useLocalSearchParams<{ id: string; from?: string; userId?: string; filterType?: string; filterValue?: string }>();
@@ -47,6 +68,7 @@ export default function RecipeDetailScreen() {
   const [recipeImage, setRecipeImage] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [savingToggle, setSavingToggle] = useState(false);
+  const [saveCount, setSaveCount] = useState(0);
 
   const [tasteDraft, setTasteDraft] = useState(0);
   const [easeDraft, setEaseDraft] = useState(0);
@@ -71,6 +93,7 @@ export default function RecipeDetailScreen() {
       ]);
       setRecipe(data);
       setRatings(allRatings);
+      setSaveCount(Array.isArray(data.saves) ? data.saves.length : 0);
       if (post?.image) setRecipeImage(post.image);
       addRecentId(numId);
 
@@ -116,9 +139,11 @@ export default function RecipeDetailScreen() {
       if (isSaved) {
         await unsaveRecipe(currentUserId, numId);
         setIsSaved(false);
+        setSaveCount((c) => Math.max(0, c - 1));
       } else {
         await saveRecipe(currentUserId, numId);
         setIsSaved(true);
+        setSaveCount((c) => c + 1);
       }
     } catch (e) {
       // silently ignore
@@ -158,7 +183,7 @@ export default function RecipeDetailScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={TEAL} />
+        <ActivityIndicator size="large" color={RED} />
         <ThemedText style={{ marginTop: 12 }}>Loading recipe…</ThemedText>
       </ThemedView>
     );
@@ -182,35 +207,48 @@ export default function RecipeDetailScreen() {
     ratings.length > 0
       ? ratings.reduce((s, r) => s + r.easeOfExecution, 0) / ratings.length
       : null;
+  const overallAvg =
+    avgTaste != null && avgEase != null ? (avgTaste + avgEase) / 2 : null;
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
 
-      {/* ── Teal Hero ── */}
+      {/* ── Dark Hero ── */}
       <View style={styles.hero}>
         <Pressable onPress={handleBack} style={styles.backBtn}>
-          <Text style={styles.backText}>← BACK</Text>
+          <Text style={styles.backText}>{'< BACK'}</Text>
         </Pressable>
+
+        {/* Rating display */}
+        {overallAvg != null && (
+          <View style={styles.heroRatingRow}>
+            <Text style={styles.heroRatingNum}>{overallAvg.toFixed(1)}</Text>
+            <Text style={styles.heroRatingDenom}> /5</Text>
+            <View style={{ marginLeft: 12 }}>
+              <RatingDots value={overallAvg} size={14} />
+            </View>
+          </View>
+        )}
 
         <View style={styles.heroContent}>
           <View style={styles.heroText}>
             <Text style={styles.heroTitle}>{recipe.title}</Text>
 
             {recipe.source?.sourceType === 'USER' && recipe.creatorUsername ? (
-              <Text style={styles.byUsername}>by @{recipe.creatorUsername}</Text>
+              <Text style={styles.byUsername}>@{recipe.creatorUsername}</Text>
             ) : recipe.source?.sourceType === 'API' ? (
               <Text style={styles.byUsername}>via API</Text>
             ) : null}
 
             <View style={styles.timePillRow}>
               {recipe.instruction?.prepTime != null && (
-                <View style={styles.timePill}>
-                  <Text style={styles.timePillText}>prep {recipe.instruction.prepTime} min</Text>
+                <View style={styles.prepPill}>
+                  <Text style={styles.prepPillText}>{recipe.instruction.prepTime}m prep</Text>
                 </View>
               )}
               {recipe.instruction?.cookTime != null && (
-                <View style={styles.timePill}>
-                  <Text style={styles.timePillText}>cook {recipe.instruction.cookTime} min</Text>
+                <View style={styles.cookPill}>
+                  <Text style={styles.cookPillText}>{recipe.instruction.cookTime}m cook</Text>
                 </View>
               )}
             </View>
@@ -242,73 +280,30 @@ export default function RecipeDetailScreen() {
         </View>
       </View>
 
-      {/* ── Green Ratings Section ── */}
-      <View style={styles.ratingsSection}>
-        <Text style={styles.ratingsHeader}>RATINGS</Text>
-
-        {ratings.length === 0 ? (
-          <Text style={styles.emptyNote}>No ratings yet — be the first to rate!</Text>
-        ) : (
-          <View style={styles.ratingsSummaryRow}>
-            <View style={styles.ratingCol}>
-              <Text style={styles.ratingColLabel}>taste</Text>
-              <View style={styles.ratingStarRow}>
-                <StarRating value={avgTaste ?? 0} size={20} />
-                <Text style={styles.ratingNum}>{avgTaste!.toFixed(1)}</Text>
-              </View>
-            </View>
-            <View style={styles.ratingCol}>
-              <Text style={styles.ratingColLabel}>ease of making</Text>
-              <View style={styles.ratingStarRow}>
-                <StarRating value={avgEase ?? 0} size={20} />
-                <Text style={styles.ratingNum}>{avgEase!.toFixed(1)}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {currentUserId != null && (
-          <>
-            <View style={styles.ratingsDivider} />
-            <Text style={styles.updateRatingHeader}>UPDATE RATING</Text>
-
-            <View style={styles.draftRow}>
-              <Text style={styles.draftLabel}>taste</Text>
-              <StarRating value={tasteDraft} onChange={setTasteDraft} size={26} />
-            </View>
-            <View style={styles.draftRow}>
-              <Text style={styles.draftLabel}>ease of making</Text>
-              <StarRating value={easeDraft} onChange={setEaseDraft} size={26} />
-            </View>
-
-            <View style={styles.submitRow}>
-              <Pressable
-                onPress={handleSubmitRating}
-                disabled={submitting || tasteDraft === 0 || easeDraft === 0}
-                style={({ pressed }) => [
-                  styles.submitBtn,
-                  { opacity: (submitting || tasteDraft === 0 || easeDraft === 0) ? 0.45 : pressed ? 0.8 : 1 },
-                ]}
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.submitBtnText}>Submit</Text>
-                )}
-              </Pressable>
-            </View>
-
-            {submitMsg && <Text style={styles.submitMsg}>{submitMsg}</Text>}
-          </>
-        )}
+      {/* ── Stats Bar ── */}
+      <View style={styles.statsBar}>
+        <View style={styles.statCol}>
+          <Text style={styles.statNum}>{avgTaste != null ? avgTaste.toFixed(1) : '—'}</Text>
+          <Text style={styles.statLabel}>TASTE</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statCol}>
+          <Text style={styles.statNum}>{avgEase != null ? avgEase.toFixed(1) : '—'}</Text>
+          <Text style={styles.statLabel}>EASE</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statCol}>
+          <Text style={styles.statNum}>{saveCount}</Text>
+          <Text style={styles.statLabel}>SAVES</Text>
+        </View>
       </View>
 
-      {/* ── Tan Content Section ── */}
+      {/* ── Content Section ── */}
       <View style={styles.contentSection}>
 
         {recipe.ingredients && recipe.ingredients.length > 0 && (
           <>
-            <Text style={styles.contentHeader}>Ingredients</Text>
+            <Text style={styles.contentHeader}>INGREDIENTS</Text>
             <View style={styles.ingredientGrid}>
               {recipe.ingredients.map((ing, i) => (
                 <View key={i} style={styles.ingredientBox}>
@@ -324,18 +319,54 @@ export default function RecipeDetailScreen() {
 
         {recipe.instruction?.steps && recipe.instruction.steps.length > 0 && (
           <>
-            <Text style={[styles.contentHeader, { marginTop: 28 }]}>STEPS:</Text>
+            <Text style={[styles.contentHeader, { marginTop: 32 }]}>METHOD</Text>
             {recipe.instruction.steps.map((step, i) => (
               <View key={i} style={styles.stepRow}>
-                <View style={styles.stepBadge}>
-                  <Text style={styles.stepBadgeText}>{step.stepNumber}</Text>
-                </View>
+                <Text style={styles.stepNumber}>
+                  {String(step.stepNumber).padStart(2, '0')}
+                </Text>
+                <View style={styles.stepDividerLine} />
                 <Text style={styles.stepText}>{step.stepDescription}</Text>
               </View>
             ))}
           </>
         )}
       </View>
+
+      {/* ── Rate This Dish ── */}
+      {currentUserId != null && (
+        <View style={styles.rateCard}>
+          <Text style={styles.rateCardHeader}>RATE THIS DISH</Text>
+
+          <View style={styles.draftRow}>
+            <Text style={styles.draftLabel}>TASTE</Text>
+            <StarRating value={tasteDraft} onChange={setTasteDraft} size={26} />
+          </View>
+          <View style={styles.draftRow}>
+            <Text style={styles.draftLabel}>EASE</Text>
+            <StarRating value={easeDraft} onChange={setEaseDraft} size={26} />
+          </View>
+
+          <View style={styles.submitRow}>
+            <Pressable
+              onPress={handleSubmitRating}
+              disabled={submitting || tasteDraft === 0 || easeDraft === 0}
+              style={({ pressed }) => [
+                styles.submitBtn,
+                { opacity: (submitting || tasteDraft === 0 || easeDraft === 0) ? 0.45 : pressed ? 0.8 : 1 },
+              ]}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.submitBtnText}>Submit</Text>
+              )}
+            </Pressable>
+          </View>
+
+          {submitMsg && <Text style={styles.submitMsg}>{submitMsg}</Text>}
+        </View>
+      )}
 
     </ScrollView>
   );
@@ -347,118 +378,95 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: TAN },
   container: { paddingBottom: 48 },
 
-  // ── Hero (teal) ──
+  // ── Hero (dark) ──
   hero: {
-    backgroundColor: TEAL,
+    backgroundColor: DARK,
     paddingHorizontal: 24,
     paddingTop: 56,
     paddingBottom: 30,
   },
   backBtn: { marginBottom: 20 },
-  backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
+  backText: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600', letterSpacing: 0.5 },
+  heroRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 16,
+  },
+  heroRatingNum: {
+    color: '#5E5447',
+    fontSize: 50,
+    fontWeight: '800',
+    lineHeight: 44,
+  },
+  heroRatingDenom: {
+    color: '#5E5447',
+    fontSize: 20,
+    fontWeight: '700',
+    opacity: 0.55,
+  },
   heroContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   heroText: { flex: 1 },
-  heroImage: { width: 120, height: 120, borderRadius: 12 },
+  heroImage: { width: 110, height: 110, borderRadius: 12 },
   heroTitle: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '800',
+    color: TAN,
+    fontSize: 45,
+    fontFamily: 'Fraunces_700Bold_Italic',
     marginBottom: 6,
     lineHeight: 38,
   },
-  byUsername: { color: '#fff', fontSize: 15, opacity: 0.9, marginBottom: 18 },
+  byUsername: { color: GREEN, fontSize: 14, fontWeight: '600', marginBottom: 16 },
   timePillRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 20 },
-  timePill: {
-    backgroundColor: RED,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+  prepPill: {
+    backgroundColor: '#D0F0EE',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 24,
   },
-  timePillText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  prepPillText: { color: '#05A8AA', fontSize: 13, fontWeight: '700' },
+  cookPill: {
+    backgroundColor: '#FFEDE2',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 24,
+  },
+  cookPillText: { color: '#BC412B', fontSize: 13, fontWeight: '700' },
   saveBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
-  // ── Ratings (green card) ──
-  ratingsSection: {
-    backgroundColor: GREEN,
-    marginHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 8,
-    borderRadius: 18,
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  ratingsHeader: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1E2A1E',
-    marginBottom: 14,
-    letterSpacing: 0.5,
-  },
-  ratingsSummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  ratingCol: { gap: 4 },
-  ratingColLabel: { fontSize: 13, color: '#1E2A1E', opacity: 0.75, fontWeight: '500' },
-  ratingStarRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ratingNum: { fontSize: 14, fontWeight: '700', color: '#1E2A1E' },
-  emptyNote: { fontSize: 14, color: '#1E2A1E', opacity: 0.65, fontStyle: 'italic' },
-  ratingsDivider: {
-    height: 1.5,
-    backgroundColor: '#1E2A1E',
-    opacity: 0.15,
-    marginVertical: 18,
-  },
-  updateRatingHeader: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1E2A1E',
-    marginBottom: 14,
-    letterSpacing: 0.5,
-  },
-  draftRow: {
+  // ── Stats Bar ──
+  statsBar: {
+    backgroundColor: CREAM,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    justifyContent: 'space-around',
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
-  draftLabel: { fontSize: 14, color: '#1E2A1E', fontWeight: '600' },
-  submitRow: { alignItems: 'flex-end', marginTop: 6 },
-  submitBtn: {
-    backgroundColor: RED,
-    paddingHorizontal: 28,
-    paddingVertical: 11,
-    borderRadius: 24,
-  },
-  submitBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  submitMsg: { marginTop: 10, fontSize: 13, color: '#1E2A1E', textAlign: 'center', opacity: 0.8 },
+  statCol: { alignItems: 'center', flex: 1 },
+  statNum: { fontSize: 22, fontWeight: '800', color: '#2C1A0E' },
+  statLabel: { fontSize: 11, fontWeight: '700', color: '#2C1A0E', opacity: 0.5, marginTop: 2, letterSpacing: 0.8 },
+  statDivider: { width: 1, height: 36, backgroundColor: 'rgba(0,0,0,0.1)' },
 
-  // ── Content (tan background, no card) ──
+  // ── Content ──
   contentSection: {
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 28,
   },
   contentHeader: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#2C1A0E',
+    color: RED,
     marginBottom: 16,
-    letterSpacing: 0.3,
+    letterSpacing: 1.2,
   },
   ingredientGrid: {
     flexDirection: 'row',
@@ -468,8 +476,8 @@ const styles = StyleSheet.create({
   ingredientBox: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#2C1A0E',
+    borderWidth: 1.5,
+    borderColor: 'rgba(44,26,14,0.15)',
     padding: 10,
     width: '30%',
     minHeight: 72,
@@ -477,33 +485,74 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ingredientQty: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: TEAL,
     textAlign: 'center',
   },
   ingredientName: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#2C1A0E',
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 3,
     fontWeight: '500',
+    opacity: 0.65,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    gap: 12,
+    marginBottom: 20,
+    gap: 14,
   },
-  stepBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: RED,
-    alignItems: 'center',
-    justifyContent: 'center',
+  stepNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: 'rgba(44,26,14,0.18)',
+    width: 36,
+    flexShrink: 0,
+    lineHeight: 26,
+  },
+  stepDividerLine: {
+    width: 2,
+    backgroundColor: GREEN,
+    marginTop: 4,
+    height: 16,
+    borderRadius: 2,
     flexShrink: 0,
   },
-  stepBadgeText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   stepText: { flex: 1, fontSize: 15, lineHeight: 23, color: '#2C1A0E' },
+
+  // ── Rate This Dish card ──
+  rateCard: {
+    backgroundColor: DARK,
+    marginHorizontal: 20,
+    marginTop: 32,
+    borderRadius: 18,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 24,
+  },
+  rateCardHeader: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: GREEN,
+    letterSpacing: 1.5,
+    marginBottom: 20,
+  },
+  draftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  draftLabel: { fontSize: 13, color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
+  submitRow: { alignItems: 'flex-end', marginTop: 8 },
+  submitBtn: {
+    backgroundColor: RED,
+    paddingHorizontal: 28,
+    paddingVertical: 11,
+    borderRadius: 24,
+  },
+  submitBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  submitMsg: { marginTop: 10, fontSize: 13, color: 'rgba(255,255,255,0.7)', textAlign: 'center' },
 });

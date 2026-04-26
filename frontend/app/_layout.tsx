@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { useFonts, Fraunces_700Bold_Italic } from '@expo-google-fonts/fraunces';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
@@ -54,6 +55,9 @@ function AppShell() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({ Fraunces_700Bold_Italic });
+  if (!fontsLoaded) return null;
+
   return (
     <AuthProvider>
       <AppShell />
