@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { postsUrl } from '@/constants/api';
 import { authHeaders, handleResponse } from './client';
 import type { RecipeCreateRequest } from './types';
@@ -30,11 +31,17 @@ export async function createPost(body: PostCreateRequest): Promise<PostResponse>
 
 export async function uploadPostImage(imageUri: string): Promise<string> {
   const formData = new FormData();
-  formData.append('file', {
-    uri: imageUri,
-    name: 'photo.jpg',
-    type: 'image/jpeg',
-  } as any);
+
+  if (Platform.OS === 'web') {
+    const blob = await fetch(imageUri).then((r) => r.blob());
+    formData.append('file', blob, 'photo.jpg');
+  } else {
+    formData.append('file', {
+      uri: imageUri,
+      name: 'photo.jpg',
+      type: 'image/jpeg',
+    } as any);
+  }
 
   const res = await fetch(postsUrl('/upload-image'), {
     method: 'POST',
