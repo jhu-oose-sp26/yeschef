@@ -33,6 +33,7 @@ const MAPPING = {
   'square.grid.2x2': 'apps',
   'fork.knife': 'restaurant',
   'pencil': 'edit',
+  'bell.fill': 'notifications',
 } as IconMapping;
 
 /**
