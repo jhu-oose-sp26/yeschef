@@ -171,7 +171,7 @@ public class PostController {
             return ResponseEntity.internalServerError().build();
         }
     }
-
+    
     // DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {

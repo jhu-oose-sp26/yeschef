@@ -32,3 +32,7 @@ export function ratingsUrl(path = '') {
 export function authUrl(path = '') {
   return `${API_BASE_URL}/auth${path}`;
 }
+
+export function postsUrl(path = '') {
+  return `${API_BASE_URL}/posts${path}`;
+}
