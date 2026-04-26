@@ -1,38 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { getFriends, getFriendsRecipes } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 import type { Recipe } from '@/lib/api/types';
 
+const DARK = '#1A1208';
+const GREEN = '#B8D5B8';
+const TAN = '#FFEDE2';
+const RED = '#BC412B';
+const TEAL = '#05A8AA';
+const CREAM = '#FFF8F2';
+
 export default function HomeScreen() {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [friendNames, setFriendNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const colorScheme = useColorScheme() ?? 'light';
-  const tintColor = Colors[colorScheme].tint;
-  const cardBg = useThemeColor({}, 'card');
-  const cardBorder = useThemeColor({}, 'cardBorder');
-  const accent = useThemeColor({}, 'accent');
 
   const loadFeed = useCallback(
     async (isRefresh = false) => {
@@ -40,23 +37,20 @@ export default function HomeScreen() {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       setError(null);
-
       try {
         if (!user) {
           setRecipes([]);
           setFriendNames([]);
           return;
         }
-
         const [friendRecipeData, friendNameData] = await Promise.all([
           getFriendsRecipes(user.id),
           getFriends(user.id).catch(() => [] as string[]),
         ]);
-
         setRecipes(friendRecipeData);
         setFriendNames(friendNameData);
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load feed.');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load feed.');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -69,260 +63,333 @@ export default function HomeScreen() {
     loadFeed();
   }, [loadFeed]);
 
-  if (loading && !refreshing) {
-    return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={tintColor} />
-        <ThemedText style={styles.message}>Loading your home feed…</ThemedText>
-      </ThemedView>
-    );
-  }
-
-  if (!user) {
-    return (
-      <ThemedView style={styles.centered}>
-        <View style={[styles.emptyIcon, { backgroundColor: accent + '18' }]}>
-          <IconSymbol name="house.fill" size={42} color={accent} />
-        </View>
-        <ThemedText type="title" style={styles.emptyTitle}>
-          Home Feed
-        </ThemedText>
-        <ThemedText style={styles.message}>
-          Log in to scroll through recipes shared by your friends.
-        </ThemedText>
-      </ThemedView>
-    );
-  }
-
-  if (error) {
-    return (
-      <ThemedView style={styles.centered}>
-        <ThemedText type="subtitle" style={styles.error}>
-          Could not load the home feed
-        </ThemedText>
-        <ThemedText style={styles.message}>{error}</ThemedText>
-        <Pressable
-          style={[styles.retryButton, { backgroundColor: tintColor }]}
-          onPress={() => loadFeed()}>
-          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-        </Pressable>
-      </ThemedView>
-    );
-  }
-
-  if (friendNames.length === 0) {
-    return (
-      <ThemedView style={styles.centered}>
-        <View style={[styles.emptyIcon, { backgroundColor: accent + '18' }]}>
-          <IconSymbol name="person.2.fill" size={42} color={accent} />
-        </View>
-        <ThemedText type="title" style={styles.emptyTitle}>
-          No friends yet
-        </ThemedText>
-        <ThemedText style={styles.message}>
-          Once you add friends, their recipe posts will show up here in a scrollable feed.
-        </ThemedText>
-      </ThemedView>
-    );
-  }
-
-  if (recipes.length === 0) {
-    return (
-      <ThemedView style={styles.centered}>
-        <View style={[styles.emptyIcon, { backgroundColor: accent + '18' }]}>
-          <IconSymbol name="book.fill" size={42} color={accent} />
-        </View>
-        <ThemedText type="title" style={styles.emptyTitle}>
-          Nothing to scroll yet
-        </ThemedText>
-        <ThemedText style={styles.message}>
-          Your friends ({friendNames.join(', ')}) have not posted any recipes yet.
-        </ThemedText>
-      </ThemedView>
-    );
-  }
+  const initial = user?.username?.[0]?.toUpperCase() ?? '?';
 
   return (
-    <FlatList
-      data={recipes}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.list}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => loadFeed(true)}
-          tintColor={tintColor}
+          tintColor={RED}
         />
       }
-      ListHeaderComponent={
-        <View style={[styles.hero, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText type="title">Friends&apos; Recipes</ThemedText>
-          <ThemedText style={styles.heroText}>
-            Scroll through the latest recipes shared by {friendNames.length}{' '}
-            {friendNames.length === 1 ? 'friend' : 'friends'}.
-          </ThemedText>
+    >
+      {/* ── Hero ── */}
+      <View style={styles.hero}>
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <View style={{ flex: 1 }} />
+          <Pressable
+            style={styles.bellBtn}
+            // notifications page to be linked by another team member
+            onPress={() => {}}
+          >
+            <IconSymbol name="bell.fill" size={20} color={GREEN} />
+          </Pressable>
+          <Pressable
+            style={styles.avatar}
+            onPress={() => router.navigate('/(tabs)/profile')}
+          >
+            <Text style={styles.avatarText}>{initial}</Text>
+          </Pressable>
         </View>
-      }
-      renderItem={({ item, index }) => {
-        const totalTime = item.instruction
-          ? item.instruction.prepTime + item.instruction.cookTime
-          : null;
 
-        return (
-          <Link href={{ pathname: '/recipes/[id]', params: { id: String(item.id) } }} asChild>
-            <Pressable
-              style={({ pressed }) => [
-                styles.card,
-                {
-                  backgroundColor: cardBg,
-                  borderColor: cardBorder,
-                  opacity: pressed ? 0.92 : 1,
-                },
-              ]}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.orderBadge, { backgroundColor: accent + '15' }]}>
-                  <ThemedText style={[styles.orderBadgeText, { color: accent }]}>
-                    {String(index + 1).padStart(2, '0')}
-                  </ThemedText>
-                </View>
-                <View style={styles.cardCopy}>
-                  <ThemedText type="defaultSemiBold" style={styles.cardTitle} numberOfLines={2}>
-                    {item.title}
-                  </ThemedText>
-                  <ThemedText style={styles.cardMeta}>
-                    {item.ingredients?.length ?? 0} ingredients
-                    {totalTime != null ? ` · ${totalTime} min total` : ''}
-                  </ThemedText>
-                </View>
-                <IconSymbol name="chevron.right" size={18} color={accent} />
-              </View>
-              {item.ingredients && item.ingredients.length > 0 && (
-                <ThemedText style={styles.preview} numberOfLines={2}>
-                  {item.ingredients
-                    .slice(0, 5)
-                    .map((ingredient) => ingredient.ingredient)
-                    .join(', ')}
-                </ThemedText>
-              )}
+        {/* Heading */}
+        <Text style={styles.heroHeading}>
+          {"what's\n"}
+          <Text style={styles.heroHeadingAccent}>cooking?</Text>
+        </Text>
+
+        {/* Search bar */}
+        <Pressable
+          style={styles.searchBar}
+          onPress={() => router.navigate('/(tabs)/search')}
+        >
+          <IconSymbol name="magnifyingglass" size={16} color="rgba(26,18,8,0.4)" />
+          <Text style={styles.searchPlaceholder}>Find a recipe...</Text>
+        </Pressable>
+      </View>
+
+      {/* ── Feed ── */}
+      <View style={styles.feedSection}>
+        <View style={styles.feedHeader}>
+          <Text style={styles.feedTitle}>fresh posts</Text>
+          <Pressable style={styles.allBtn}>
+            <Text style={styles.allBtnText}>ALL</Text>
+          </Pressable>
+        </View>
+
+        {loading && !refreshing ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={RED} />
+          </View>
+        ) : error ? (
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>Could not load feed</Text>
+            <Pressable style={styles.retryBtn} onPress={() => loadFeed()}>
+              <Text style={styles.retryBtnText}>Retry</Text>
             </Pressable>
-          </Link>
-        );
-      }}
-    />
+          </View>
+        ) : !user ? (
+          <View style={styles.centered}>
+            <Text style={styles.emptyText}>Log in to see your friends' recipes.</Text>
+          </View>
+        ) : friendNames.length === 0 ? (
+          <View style={styles.centered}>
+            <Text style={styles.emptyText}>Add friends to see their posts here.</Text>
+          </View>
+        ) : recipes.length === 0 ? (
+          <View style={styles.centered}>
+            <Text style={styles.emptyText}>Your friends haven't posted any recipes yet.</Text>
+          </View>
+        ) : (
+          recipes.map((item, index) => (
+            <View key={item.id}>
+              {index > 0 && <View style={styles.cardDivider} />}
+              <Pressable
+                style={({ pressed }) => [styles.card, { opacity: pressed ? 0.92 : 1 }]}
+                onPress={() =>
+                  router.navigate({
+                    pathname: '/(tabs)/recipes/[id]',
+                    params: { id: String(item.id), from: 'home' },
+                  })
+                }
+              >
+                <View style={styles.cardTop}>
+                  <View style={styles.cardMain}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    {item.creatorUsername && (
+                      <Text style={styles.cardUsername}>@{item.creatorUsername}</Text>
+                    )}
+                    <View style={styles.pillRow}>
+                      {item.instruction?.prepTime != null && (
+                        <View style={styles.prepPill}>
+                          <Text style={styles.prepPillText}>{item.instruction.prepTime}m prep</Text>
+                        </View>
+                      )}
+                      {item.instruction?.cookTime != null && (
+                        <View style={styles.cookPill}>
+                          <Text style={styles.cookPillText}>{item.instruction.cookTime}m cook</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <Pressable
+                    style={styles.chevronBtn}
+                    onPress={() =>
+                      router.navigate({
+                        pathname: '/(tabs)/recipes/[id]',
+                        params: { id: String(item.id), from: 'home' },
+                      })
+                    }
+                  >
+                    <IconSymbol name="chevron.right" size={16} color="#fff" />
+                  </Pressable>
+                </View>
+              </Pressable>
+            </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
+  scroll: { flex: 1, backgroundColor: TAN },
+  container: { paddingBottom: 48 },
+
+  // ── Hero ──
+  hero: {
+    backgroundColor: DARK,
+    paddingHorizontal: 24,
+    paddingTop: 56,
+    paddingBottom: 32,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 12,
+  },
+  bellBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderColor: GREEN,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
   },
-  list: {
-    padding: 20,
-    paddingBottom: 40,
-    gap: 14,
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: RED,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  hero: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 22,
-    marginBottom: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-      },
-      android: { elevation: 2 },
-      default: {},
-    }),
+  avatarText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
   },
-  heroText: {
-    marginTop: 8,
-    opacity: 0.78,
-    lineHeight: 20,
+  heroHeading: {
+    color: '#fff',
+    fontSize: 42,
+    fontWeight: '800',
+    lineHeight: 50,
+    marginBottom: 22,
+  },
+  heroHeadingAccent: {
+    color: RED,
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 42,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: GREEN,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  searchPlaceholder: {
+    color: 'rgba(26,18,8,0.45)',
+    fontSize: 15,
+    flex: 1,
+  },
+
+  // ── Feed ──
+  feedSection: {
+    paddingHorizontal: 20,
+    paddingTop: 28,
+  },
+  feedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  feedTitle: {
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 22,
+    color: DARK,
+  },
+  allBtn: {
+    borderWidth: 1.5,
+    borderColor: DARK,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  allBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: DARK,
+    letterSpacing: 0.8,
+  },
+  cardDivider: {
+    height: 2,
+    backgroundColor: GREEN,
+    borderRadius: 1,
+    marginVertical: 2,
   },
   card: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 18,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-      },
-      android: { elevation: 2 },
-      default: {},
-    }),
+    backgroundColor: CREAM,
+    borderRadius: 16,
+    padding: 16,
   },
-  cardHeader: {
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  orderBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orderBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  cardCopy: {
+  cardMain: {
     flex: 1,
-    minWidth: 0,
   },
   cardTitle: {
     fontSize: 17,
+    fontWeight: '800',
+    color: DARK,
+    marginBottom: 4,
   },
-  cardMeta: {
-    marginTop: 4,
-    opacity: 0.7,
+  cardUsername: {
     fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
+    marginBottom: 8,
   },
-  preview: {
-    marginTop: 12,
-    opacity: 0.78,
-    lineHeight: 20,
+  pillRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  emptyIcon: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+  prepPill: {
+    backgroundColor: '#D0F0EE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  prepPillText: {
+    color: TEAL,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  cookPill: {
+    backgroundColor: TAN,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(188,65,43,0.2)',
+  },
+  cookPillText: {
+    color: RED,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  chevronBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: DARK,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    flexShrink: 0,
   },
-  emptyTitle: {
+
+  // ── States ──
+  centered: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 15,
+    color: DARK,
+    opacity: 0.5,
     textAlign: 'center',
+    maxWidth: 280,
   },
-  message: {
-    marginTop: 10,
-    textAlign: 'center',
-    opacity: 0.8,
-    lineHeight: 22,
-    maxWidth: 320,
+  errorText: {
+    fontSize: 15,
+    color: RED,
+    fontWeight: '700',
+    marginBottom: 12,
   },
-  error: {
-    color: '#C0392B',
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: 16,
+  retryBtn: {
+    backgroundColor: RED,
     paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  retryButtonText: {
+  retryBtnText: {
     color: '#fff',
     fontWeight: '700',
+    fontSize: 14,
   },
 });
