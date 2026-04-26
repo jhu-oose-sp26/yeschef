@@ -20,6 +20,14 @@ export interface PostCreateRequest {
   recipe: RecipeCreateRequest;
 }
 
+export async function getPostByRecipeId(recipeId: number): Promise<PostResponse | null> {
+  const res = await fetch(postsUrl(`/by-recipe/${recipeId}`), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  if (res.status === 404) return null;
+  return handleResponse<PostResponse>(res);
+}
+
 export async function createPost(body: PostCreateRequest): Promise<PostResponse> {
   const res = await fetch(postsUrl(), {
     method: 'POST',

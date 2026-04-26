@@ -81,6 +81,14 @@ public class PostController {
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // GET BY RECIPE ID
+    @GetMapping("/by-recipe/{recipeId}")
+    public ResponseEntity<PostResponseDTO> getPostByRecipeId(@PathVariable Long recipeId) {
+        return postRepository.findByRecipeId(recipeId)
+            .map(post -> ResponseEntity.ok(toPostDTO(post)))
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     // GET BY NAME
     @GetMapping("/by-name")
     public ResponseEntity<List<PostResponseDTO>> getByName(@RequestParam String name) {
