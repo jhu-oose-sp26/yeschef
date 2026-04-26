@@ -153,6 +153,9 @@ public class PostController {
         if (dto.getImage() != null && !dto.getImage().isBlank()) {
             post.setImage(dto.getImage());
         }
+        if (dto.getNotes() != null) {
+            post.setNotes(dto.getNotes());
+        }
 
         return ResponseEntity.ok(toPostDTO(postRepository.save(post)));
     }
@@ -167,6 +170,9 @@ public class PostController {
             .map(post -> {
                 if (dto.getImage() != null) {
                     post.setImage(dto.getImage());
+                }
+                if (dto.getNotes() != null) {
+                    post.setNotes(dto.getNotes());
                 }
                 return ResponseEntity.ok(toPostDTO(postRepository.save(post)));
             })
@@ -200,6 +206,7 @@ public class PostController {
         return new PostResponseDTO(
             post.getId(),
             post.getImage(),
+            post.getNotes(),
             toDTO(post.getRecipe())
         );
     }
