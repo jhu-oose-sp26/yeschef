@@ -2,8 +2,11 @@ package com.yeschef.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -51,6 +54,12 @@ import com.yeschef.api.repository.FriendshipRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
+import com.yeschef.api.service.NotificationService;
+import com.yeschef.api.model.Notification;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
 
 @WebMvcTest(controllers = UserController.class)
 @Import(UserControllerTests.TestSecurityConfig.class)
@@ -85,10 +94,14 @@ class UserControllerTests {
 
     @MockitoBean
     private AuthenticatedUserService authenticatedUserService;
+    
+    @MockitoBean
+    private NotificationService notificationService;
 
     @BeforeEach
     void resetMocks() {
-        reset(userRepository, friendshipRepository, recipeRepository, authenticatedUserService);
+        reset(userRepository, friendshipRepository, recipeRepository,
+            authenticatedUserService, notificationService);
     }
 
     @Test
@@ -239,5 +252,60 @@ class UserControllerTests {
         mockMvc.perform(get("/users/{id}/friends/liked", 1L).with(user("testuser").roles("USER")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].title").value("Tacos"));
+    }
+
+    // test notification for friendship
+    @Test
+    void addFriend_createsFriendshipAndSendsNotification() throws Exception {
+        User alice = new User();
+        alice.setId(1L);
+
+        User bob = new User();
+        bob.setId(2L);
+
+        when(authenticatedUserService.requireCurrentUser(1L)).thenReturn(alice);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+
+        when(friendshipRepository.findBySelfAndFriend(alice, bob))
+                .thenReturn(Optional.empty());
+        when(friendshipRepository.findBySelfAndFriend(bob, alice))
+                .thenReturn(Optional.empty());
+
+        when(friendshipRepository.save(any(Friendship.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/users/{id}/friends/{friendId}", 1L, 2L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf()))
+            .andExpect(status().isOk());
+
+        verify(friendshipRepository, times(2)).save(any(Friendship.class));
+
+        verify(notificationService, times(1)).createNotification(
+                eq(bob),
+                eq(alice),
+                eq(Notification.Type.FRIEND_REQUEST),
+                isNull()
+        );
+    }
+
+    // no notif on faillure
+    @Test
+    void addFriend_doesNotSendNotification_whenUsersNotFound() throws Exception {
+
+        when(authenticatedUserService.requireCurrentUser(1L))
+                .thenReturn(new User());
+
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        when(userRepository.findById(2L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/users/{id}/friends/{friendId}", 1L, 2L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf()))
+            .andExpect(status().isNotFound());
+
+        verify(notificationService, never())
+                .createNotification(any(), any(), any(), any());
     }
 }

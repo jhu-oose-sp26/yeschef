@@ -24,6 +24,8 @@ import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.repository.FriendshipRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
+import com.yeschef.api.service.NotificationService;
+import com.yeschef.api.model.Notification;
 
 // This controller exposes REST endpoints related to users.
 @RestController
@@ -35,15 +37,18 @@ public class UserController {
     private final FriendshipRepository friendshipRepository;
     private final RecipeRepository recipeRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final NotificationService notificationService;
 
     public UserController(UserRepository userRepository,
                           FriendshipRepository friendshipRepository,
                           RecipeRepository recipeRepository,
-                          AuthenticatedUserService authenticatedUserService) {
+                          AuthenticatedUserService authenticatedUserService,
+                          NotificationService notificationService) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.recipeRepository = recipeRepository;
         this.authenticatedUserService = authenticatedUserService;
+        this.notificationService = notificationService;
     }
 
     // Handle GET requests to /users
@@ -144,14 +149,11 @@ public class UserController {
             return ResponseEntity.status(409).build();
         }
 
-        Friendship friendshipSelfOther = new Friendship();
-        friendshipSelfOther.setSelf(self);
-        friendshipSelfOther.setFriend(friend);
-        Friendship friendshipOtherSelf = new Friendship();
-        friendshipOtherSelf.setSelf(friend);
-        friendshipOtherSelf.setFriend(self);
-        friendshipRepository.save(friendshipSelfOther);
-        friendshipRepository.save(friendshipOtherSelf);
+        // Create both directions so the friendship is automatically mutual
+        Friendship friendship = new Friendship();
+        friendship.setSelf(self);
+        friendship.setFriend(friend);
+        friendshipRepository.save(friendship);
 
         if (friendshipRepository.findBySelfAndFriend(friend, self).isEmpty()) {
             Friendship reverse = new Friendship();
@@ -159,6 +161,14 @@ public class UserController {
             reverse.setFriend(self);
             friendshipRepository.save(reverse);
         }
+
+        // notify
+        notificationService.createNotification(
+            friend,
+            self, 
+            Notification.Type.FRIEND_REQUEST,
+            null // not necessary
+        );
 
         return ResponseEntity.ok().build();
     }

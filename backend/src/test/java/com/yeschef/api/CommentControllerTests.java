@@ -1,6 +1,7 @@
 package com.yeschef.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -44,12 +45,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.yeschef.api.controller.CommentController;
 import com.yeschef.api.model.Comment;
+import com.yeschef.api.model.Notification;
 import com.yeschef.api.model.Post;
+import com.yeschef.api.model.Recipe;
+import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.CommentRepository;
 import com.yeschef.api.repository.PostRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
+import com.yeschef.api.service.NotificationService;
 
 @WebMvcTest(controllers = CommentController.class)
 @Import(CommentControllerTests.TestSecurityConfig.class)
@@ -85,9 +90,12 @@ class CommentControllerTests {
     @MockitoBean
     private AuthenticatedUserService authenticatedUserService;
 
+    @MockitoBean
+    private NotificationService notificationService;
+
     @BeforeEach
     void resetMocks() {
-        reset(commentRepository, postRepository, userRepository, authenticatedUserService);
+        reset(commentRepository, postRepository, userRepository, authenticatedUserService, notificationService);
     }
 
     // --- GET /comments/{id} ---
@@ -470,5 +478,194 @@ class CommentControllerTests {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void createComment_doesNotSave_whenPostNotFound_evenIfUserValid() throws Exception {
+        User user = new User();
+        user.setId(2L);
+
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(user);
+        when(postRepository.findById(1L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/comments")
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                    "postId": 1,
+                    "userId": 2,
+                    "text": "Should not save"
+                    }
+                    """))
+            .andExpect(status().isNotFound());
+
+        verify(commentRepository, never()).save(any());
+    }
+
+    @Test
+    void createComment_callsAuthenticatedUserService_withCorrectUserId() throws Exception {
+        User user = new User();
+        user.setId(2L);
+
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(user);
+        when(postRepository.findById(1L)).thenReturn(Optional.of(new Post()));
+        when(commentRepository.save(any(Comment.class)))
+            .thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/comments")
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                    "postId": 1,
+                    "userId": 2,
+                    "text": "Hello"
+                    }
+                    """))
+            .andExpect(status().isOk());
+
+        verify(authenticatedUserService, times(1)).requireCurrentUser(2L);
+    }
+
+    @Test
+    void updateComment_updatesEvenIfPostChanges_butStillReturnsOk() throws Exception {
+        Post oldPost = new Post();
+        setPostId(oldPost, 1L);
+
+        Post newPost = new Post();
+        setPostId(newPost, 2L);
+
+        User user = new User();
+        user.setId(2L);
+
+        Comment existing = buildComment(3L, oldPost, user, "Old", Instant.now());
+
+        when(commentRepository.findById(3L)).thenReturn(Optional.of(existing));
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(user);
+        when(commentRepository.save(any(Comment.class)))
+            .thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(put("/comments/{id}", 3L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                    "postId": 2,
+                    "userId": 2,
+                    "text": "Updated"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.text").value("Updated"));
+    }
+
+    @Test
+    void deleteComment_callsAuthenticatedUserService_beforeDelete() throws Exception {
+        User user = new User();
+        user.setId(2L);
+
+        Post post = new Post();
+        setPostId(post, 1L);
+
+        Comment comment = buildComment(3L, post, user, "text", Instant.now());
+
+        when(commentRepository.findById(3L)).thenReturn(Optional.of(comment));
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(user);
+
+        mockMvc.perform(delete("/comments/{id}", 3L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf()))
+            .andExpect(status().isNoContent());
+
+        verify(authenticatedUserService, times(1)).requireCurrentUser(2L);
+        verify(commentRepository, times(1)).deleteById(3L);
+    }
+
+    @Test
+    void createComment_sendsNotification_whenRecipeOwnerExists() throws Exception {
+
+        User actor = new User();
+        actor.setId(2L);
+
+        User recipient = new User();
+        recipient.setId(99L);
+
+        Post post = new Post();
+        setPostId(post, 1L);
+
+        RecipeSource source = new RecipeSource();
+        User sourceUser = recipient;
+
+        com.yeschef.api.model.Recipe recipe = new com.yeschef.api.model.Recipe();
+        recipe.setSource(source);
+        source.setUser(sourceUser);
+
+        post.setRecipe(recipe);
+
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(actor);
+        when(postRepository.findById(1L)).thenReturn(Optional.of(post));
+        when(commentRepository.save(any(Comment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/comments")
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                    "postId": 1,
+                    "userId": 2,
+                    "text": "Nice post!"
+                    }
+                """))
+            .andExpect(status().isOk());
+
+        verify(notificationService, times(1)).createNotification(
+                eq(recipient),
+                eq(actor),
+                eq(Notification.Type.COMMENT),
+                eq(1L)
+        );
+    }
+
+    @Test
+    void createComment_doesNotSendNotification_whenNoRecipeOwner() throws Exception {
+        User actor = new User();
+        actor.setId(2L);
+
+        Post post = new Post();
+        setPostId(post, 1L);
+
+        // IMPORTANT: no recipe attached
+        post.setRecipe(null);
+
+        when(authenticatedUserService.requireCurrentUser(2L)).thenReturn(actor);
+        when(postRepository.findById(1L)).thenReturn(Optional.of(post));
+        when(commentRepository.save(any(Comment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/comments")
+                .with(user("testuser").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                    "postId": 1,
+                    "userId": 2,
+                    "text": "Nice post!"
+                    }
+                """))
+            .andExpect(status().isOk());
+
+        verify(notificationService, never()).createNotification(
+                any(),
+                any(),
+                any(),
+                any()
+        );
     }
 }
