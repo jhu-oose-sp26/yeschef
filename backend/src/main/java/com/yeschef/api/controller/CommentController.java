@@ -24,6 +24,9 @@ import com.yeschef.api.repository.PostRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
 
+import com.yeschef.api.service.NotificationService;
+import com.yeschef.api.model.Notification;
+
 @RestController
 @RequestMapping("/comments")
 @CrossOrigin(origins = "*")
@@ -33,15 +36,18 @@ public class CommentController {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final NotificationService notificationService;
 
     public CommentController(CommentRepository commentRepository,
                              PostRepository postRepository,
                              UserRepository userRepository,
-                             AuthenticatedUserService authenticatedUserService) {
+                             AuthenticatedUserService authenticatedUserService,
+                             NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.authenticatedUserService = authenticatedUserService;
+        this.notificationService = notificationService;
     }
 
     private CommentResponseDTO toDTO(Comment comment) {
@@ -93,6 +99,7 @@ public class CommentController {
         if (postMaybe.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        Post post = postMaybe.get();
 
         Comment comment = new Comment();
         comment.setPost(postMaybe.get());
@@ -100,6 +107,25 @@ public class CommentController {
         comment.setText(dto.getText());
 
         Comment saved = commentRepository.save(comment);
+
+        // notification logic
+        User actor = currentUser;
+        User recipient = null;
+
+        if (post.getRecipe() != null &&
+            post.getRecipe().getSource() != null) {
+
+            recipient = post.getRecipe().getSource().getUser();
+        }
+
+        if (recipient != null) {
+            notificationService.createNotification(
+                recipient,
+                actor,
+                Notification.Type.COMMENT,
+                post.getId()
+            );
+        }
         return ResponseEntity.ok(toDTO(saved));
     }
 

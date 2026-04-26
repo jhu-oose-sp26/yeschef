@@ -23,6 +23,8 @@ import com.yeschef.api.repository.RatingRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
+import com.yeschef.api.service.NotificationService;
+import com.yeschef.api.model.Notification;
 
 @RestController
 @RequestMapping("/ratings")
@@ -33,15 +35,18 @@ public class RatingController {
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final NotificationService notificationService;
 
     public RatingController(RatingRepository ratingRepository,
                             RecipeRepository recipeRepository,
                             UserRepository userRepository,
-                            AuthenticatedUserService authenticatedUserService) {
+                            AuthenticatedUserService authenticatedUserService,
+                            NotificationService notificationService) {
         this.ratingRepository = ratingRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.authenticatedUserService = authenticatedUserService;
+        this.notificationService = notificationService;
     }
 
     private RatingResponseDTO toDTO(Rating rating) {
@@ -121,6 +126,7 @@ public class RatingController {
         if (existing.isPresent()) {
             return ResponseEntity.status(409).build();
         }
+        Recipe recipe = recipeMaybe.get();
 
         Rating rating = new Rating();
         rating.setRecipe(recipeMaybe.get());
@@ -129,6 +135,23 @@ public class RatingController {
         rating.setEaseOfExecution(dto.getEaseOfExecution());
 
         Rating saved = ratingRepository.save(rating);
+
+        // notify
+        User actor = currentUser;
+        User recipient = null;
+
+        if (recipe.getSource() != null) {
+            recipient = recipe.getSource().getUser();
+        }
+
+        if (recipient != null) {
+            notificationService.createNotification(
+                recipient,
+                actor,
+                Notification.Type.RATING,
+                recipe.getId()
+            );
+        }
         return ResponseEntity.ok(toDTO(saved));
     }
 
