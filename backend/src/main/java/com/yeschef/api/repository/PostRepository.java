@@ -1,28 +1,14 @@
 package com.yeschef.api.repository;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
-=======
->>>>>>> main
-=======
-import java.util.List;
-import java.util.Optional;
-import org.springframework.data.jpa.repository.EntityGraph;
->>>>>>> de39f9d104076b8b1ecaaf25b24ff26a337f51c2
+
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import com.yeschef.api.model.Post;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> de39f9d104076b8b1ecaaf25b24ff26a337f51c2
 
     // Find a post by its associated recipe ID (1-to-1 relationship)
     Optional<Post> findByRecipeId(Long recipeId);
@@ -32,15 +18,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     List<Post> findByRecipe_Ingredients_IngredientIgnoreCase(String ingredient);
 
-    @Query("SELECT p FROM Post p WHERE (p.recipe.instruction.prepTime + p.recipe.instruction.cookTime) <= :maxTime")
-    List<Post> findByTotalTimeLessThanEqual(@Param("maxTime") int maxTime);
+    List<Post> findByTotalTimeLessThanEqual(int maxTime);
 
     List<Post> findByRecipe_TitleContainingIgnoreCase(String name);
-}
-<<<<<<< HEAD
-=======
-}
->>>>>>> main
-=======
 
->>>>>>> de39f9d104076b8b1ecaaf25b24ff26a337f51c2
+}

@@ -1,6 +1,7 @@
 package com.yeschef.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -43,11 +44,14 @@ import org.springframework.web.server.ResponseStatusException;
 import com.yeschef.api.controller.RatingController;
 import com.yeschef.api.model.Rating;
 import com.yeschef.api.model.Recipe;
+import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.RatingRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
+import com.yeschef.api.service.NotificationService;
+import com.yeschef.api.model.Notification;
 
 @WebMvcTest(controllers = RatingController.class)
 @Import(RatingControllerTests.TestSecurityConfig.class)
@@ -83,9 +87,12 @@ class RatingControllerTests {
     @MockitoBean
     private AuthenticatedUserService authenticatedUserService;
 
+    @MockitoBean
+    private NotificationService notificationService;
+
     @BeforeEach
     void resetMocks() {
-        reset(ratingRepository, recipeRepository, userRepository, authenticatedUserService);
+        reset(ratingRepository, recipeRepository, userRepository, authenticatedUserService, notificationService);
     }
 
     @Test
@@ -269,5 +276,47 @@ class RatingControllerTests {
             .andExpect(status().isNotFound());
 
         verify(ratingRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void createRating_sendsNotificationToRecipeOwner() throws Exception {
+        User rater = new User();
+        rater.setId(1L);
+
+        User owner = new User();
+        owner.setId(2L);
+
+        Recipe recipe = new Recipe();
+        recipe.setId(10L);
+
+        RecipeSource source = new RecipeSource();
+        source.setUser(owner);
+        recipe.setSource(source);
+
+        when(authenticatedUserService.requireCurrentUser(1L)).thenReturn(rater);
+        when(recipeRepository.findById(10L)).thenReturn(Optional.of(recipe));
+        when(ratingRepository.findByUser_IdAndRecipe_Id(1L, 10L)).thenReturn(Optional.empty());
+        when(ratingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/ratings")
+                .with(user("test").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "userId": 1,
+                        "recipeId": 10,
+                        "tasteQuality": 5,
+                        "easeOfExecution": 4
+                    }
+                """))
+            .andExpect(status().isOk());
+
+        verify(notificationService, times(1)).createNotification(
+                eq(owner),
+                eq(rater),
+                eq(Notification.Type.RATING),
+                eq(10L)
+        );
     }
 }

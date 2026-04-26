@@ -13,11 +13,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.yeschef.api.model.HasLiked;
+import com.yeschef.api.model.Notification;
 import com.yeschef.api.model.Recipe;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.HasLikedRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
+import com.yeschef.api.service.NotificationService;
 
 @RestController
 @RequestMapping("/users/{userId}/liked")
@@ -27,13 +29,16 @@ public class HasLikedController {
     private final HasLikedRepository hasLikedRepository;
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
+    private final NotificationService notificationService;
 
     public HasLikedController(HasLikedRepository hasLikedRepository,
                               UserRepository userRepository,
-                              RecipeRepository recipeRepository) {
+                              RecipeRepository recipeRepository,
+                              NotificationService notificationService) {
         this.hasLikedRepository = hasLikedRepository;
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
+        this.notificationService = notificationService;
     }
 
     // GET /users/{userId}/liked - returns all recipes liked by a user
@@ -66,7 +71,25 @@ public class HasLikedController {
         HasLiked hasLiked = new HasLiked();
         hasLiked.setUser(userMaybe.get());
         hasLiked.setRecipe(recipeMaybe.get());
-        return ResponseEntity.ok(hasLikedRepository.save(hasLiked));
+
+        User actor = userMaybe.get();
+        Recipe recipe = recipeMaybe.get();
+
+        // notify
+        User recipient = null;
+        if (recipe.getSource() != null) {
+            recipient = recipe.getSource().getUser();
+        }
+
+        if (recipient != null) {
+            notificationService.createNotification(
+                recipient,
+                actor,
+                Notification.Type.LIKED,
+                recipe.getId()
+            );
+        }
+         return ResponseEntity.ok(hasLikedRepository.save(hasLiked));
     }
 
     // DELETE /users/{userId}/liked/{recipeId} - unlike a recipe
