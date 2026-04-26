@@ -1,8 +1,20 @@
 package com.yeschef.api.model;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.List;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
@@ -25,9 +37,6 @@ public class Post {
 
     public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return this.id;
-    }
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -69,5 +78,5 @@ public class Post {
     public Recipe getRecipe() { return this.recipe; }
     public String getImage() { return this.image; }
     public List<Comment> getComments() { return comments; }
-    public Instant getCreatedAt() { return createdAt; }
+    public Instant getCreatedAt() { return createdAt; } 
 }
