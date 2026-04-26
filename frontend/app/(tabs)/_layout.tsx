@@ -6,8 +6,9 @@ import { Pressable, View } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
+const DARK = '#1A1208';
+const TEAL = '#05A8AA';
 const RED = '#BC412B';
-const TAN = '#FFEDE2';
 
 function CreateTabButton({ onPress, accessibilityState }: BottomTabBarButtonProps) {
   return (
@@ -41,13 +42,13 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: RED,
-        tabBarInactiveTintColor: 'rgba(26,18,8,0.4)',
+        tabBarActiveTintColor: TEAL,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.4)',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: TAN,
-          borderTopColor: 'rgba(26,18,8,0.08)',
+          backgroundColor: DARK,
+          borderTopColor: 'rgba(255,255,255,0.08)',
           borderTopWidth: 1,
           height: 64,
           paddingBottom: 8,
