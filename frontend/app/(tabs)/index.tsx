@@ -84,8 +84,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1 }} />
           <Pressable
             style={styles.bellBtn}
-            // notifications page to be linked by another team member
-            onPress={() => {}}
+            onPress={() => router.push('/notifications')}
           >
             <IconSymbol name="bell.fill" size={20} color={GREEN} />
           </Pressable>
