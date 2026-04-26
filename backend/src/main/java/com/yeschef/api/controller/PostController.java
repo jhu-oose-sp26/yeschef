@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.yeschef.api.DTO.PostRequestDTO;
 import com.yeschef.api.DTO.PostResponseDTO;
 import com.yeschef.api.model.Post;
@@ -39,6 +41,7 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class PostController {
 
+    private static final Logger log = LoggerFactory.getLogger(PostController.class);
     private final SupabaseStorageService storageService;
     private final RecipeRepository recipeRepository;
     private final PostRepository postRepository;
@@ -168,7 +171,8 @@ public class PostController {
             String url = storageService.uploadImage(file);
             return ResponseEntity.ok(Map.of("url", url));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+            log.error("Image upload failed: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
     
