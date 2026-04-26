@@ -1,3 +1,5 @@
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -12,7 +14,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { createRecipe } from '@/lib/api/recipes';
+import { createPost, uploadPostImage } from '@/lib/api/posts';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 const TEAL = '#05A8AA';
@@ -40,6 +42,7 @@ export default function CreateScreen() {
   const [cookTime, setCookTime] = useState('');
   const [ingredients, setIngredients] = useState<IngredientDraft[]>([emptyIngredient()]);
   const [steps, setSteps] = useState<StepDraft[]>([emptyStep()]);
+  const [imageUri, setImageUri] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +77,17 @@ export default function CreateScreen() {
     );
   };
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       setError('Log in to create and share a recipe.');
@@ -98,14 +112,22 @@ export default function CreateScreen() {
     setError(null);
 
     try {
-      const recipe = await createRecipe({
-        title: title.trim(),
-        sourceType: 'USER',
-        userId: user.id,
-        prepTime: Number(prepTime) || 0,
-        cookTime: Number(cookTime) || 0,
-        ingredients: cleanedIngredients,
-        steps: cleanedSteps,
+      let imageUrl: string | undefined;
+      if (imageUri) {
+        imageUrl = await uploadPostImage(imageUri);
+      }
+
+      const post = await createPost({
+        image: imageUrl,
+        recipe: {
+          title: title.trim(),
+          sourceType: 'USER',
+          userId: user.id,
+          prepTime: Number(prepTime) || 0,
+          cookTime: Number(cookTime) || 0,
+          ingredients: cleanedIngredients,
+          steps: cleanedSteps,
+        },
       });
 
       setTitle('');
@@ -113,9 +135,10 @@ export default function CreateScreen() {
       setCookTime('');
       setIngredients([emptyIngredient()]);
       setSteps([emptyStep()]);
-      router.replace({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'create' } });
+      setImageUri(null);
+      router.replace({ pathname: '/recipes/[id]', params: { id: String(post.recipe.id), from: 'create' } });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create recipe.');
+      setError(e instanceof Error ? e.message : 'Could not create post.');
     } finally {
       setSubmitting(false);
     }
@@ -182,6 +205,23 @@ export default function CreateScreen() {
               style={[styles.input, styles.halfInput, { color: '#333' }]}
             />
           </View>
+        </View>
+
+        {/* PHOTO card */}
+        <View style={styles.card}>
+          <Text style={styles.cardHeader}>PHOTO</Text>
+          {imageUri ? (
+            <View style={{ gap: 10 }}>
+              <Image source={{ uri: imageUri }} style={styles.imagePreview} contentFit="cover" />
+              <Pressable onPress={() => setImageUri(null)} style={styles.addBtn}>
+                <Text style={styles.addBtnText}>Remove Photo</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable onPress={pickImage} style={styles.addBtn}>
+              <Text style={styles.addBtnText}>+ Add Photo</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* INGREDIENTS card */}
@@ -372,5 +412,6 @@ const styles = StyleSheet.create({
   },
   postBtnText: { color: '#fff', fontSize: 17, fontWeight: '800', letterSpacing: 1 },
 
+  imagePreview: { width: '100%', height: 200, borderRadius: 10 },
   errorText: { color: RED, fontSize: 14, textAlign: 'center' },
 });

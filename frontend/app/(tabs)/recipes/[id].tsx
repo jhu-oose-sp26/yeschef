@@ -9,11 +9,13 @@ import {
   View,
 } from 'react-native';
 
+import { Image } from 'expo-image';
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
+import { getPostByRecipeId } from '@/lib/api/posts';
 import { addRecentId } from '@/lib/recentRecipes';
 import {
   getRatingsForRecipe,
@@ -42,6 +44,7 @@ export default function RecipeDetailScreen() {
   const [myRating, setMyRating] = useState<RatingResponse | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
+  const [recipeImage, setRecipeImage] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [savingToggle, setSavingToggle] = useState(false);
 
@@ -61,12 +64,14 @@ export default function RecipeDetailScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [data, allRatings] = await Promise.all([
+      const [data, allRatings, post] = await Promise.all([
         getRecipe(numId),
         getRatingsForRecipe(numId).catch(() => [] as RatingResponse[]),
+        getPostByRecipeId(numId).catch(() => null),
       ]);
       setRecipe(data);
       setRatings(allRatings);
+      if (post?.image) setRecipeImage(post.image);
       addRecentId(numId);
 
       if (authUser) {
@@ -187,42 +192,54 @@ export default function RecipeDetailScreen() {
           <Text style={styles.backText}>← BACK</Text>
         </Pressable>
 
-        <Text style={styles.heroTitle}>{recipe.title}</Text>
+        <View style={styles.heroContent}>
+          <View style={styles.heroText}>
+            <Text style={styles.heroTitle}>{recipe.title}</Text>
 
-        {recipe.source?.sourceType === 'USER' && recipe.creatorUsername ? (
-          <Text style={styles.byUsername}>by @{recipe.creatorUsername}</Text>
-        ) : recipe.source?.sourceType === 'API' ? (
-          <Text style={styles.byUsername}>via API</Text>
-        ) : null}
+            {recipe.source?.sourceType === 'USER' && recipe.creatorUsername ? (
+              <Text style={styles.byUsername}>by @{recipe.creatorUsername}</Text>
+            ) : recipe.source?.sourceType === 'API' ? (
+              <Text style={styles.byUsername}>via API</Text>
+            ) : null}
 
-        <View style={styles.timePillRow}>
-          {recipe.instruction?.prepTime != null && (
-            <View style={styles.timePill}>
-              <Text style={styles.timePillText}>prep {recipe.instruction.prepTime} min</Text>
+            <View style={styles.timePillRow}>
+              {recipe.instruction?.prepTime != null && (
+                <View style={styles.timePill}>
+                  <Text style={styles.timePillText}>prep {recipe.instruction.prepTime} min</Text>
+                </View>
+              )}
+              {recipe.instruction?.cookTime != null && (
+                <View style={styles.timePill}>
+                  <Text style={styles.timePillText}>cook {recipe.instruction.cookTime} min</Text>
+                </View>
+              )}
             </View>
-          )}
-          {recipe.instruction?.cookTime != null && (
-            <View style={styles.timePill}>
-              <Text style={styles.timePillText}>cook {recipe.instruction.cookTime} min</Text>
-            </View>
+
+            {currentUserId != null && (
+              <Pressable
+                onPress={handleToggleSave}
+                disabled={savingToggle}
+                style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                {savingToggle ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveBtnText}>
+                    {isSaved ? '✓ Saved' : '+ Save recipe'}
+                  </Text>
+                )}
+              </Pressable>
+            )}
+          </View>
+
+          {recipeImage && (
+            <Image
+              source={{ uri: recipeImage }}
+              style={styles.heroImage}
+              contentFit="cover"
+            />
           )}
         </View>
-
-        {currentUserId != null && (
-          <Pressable
-            onPress={handleToggleSave}
-            disabled={savingToggle}
-            style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
-          >
-            {savingToggle ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.saveBtnText}>
-                {isSaved ? '✓ Saved' : '+ Save recipe'}
-              </Text>
-            )}
-          </Pressable>
-        )}
       </View>
 
       {/* ── Green Ratings Section ── */}
@@ -339,6 +356,9 @@ const styles = StyleSheet.create({
   },
   backBtn: { marginBottom: 20 },
   backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
+  heroContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  heroText: { flex: 1 },
+  heroImage: { width: 120, height: 120, borderRadius: 12 },
   heroTitle: {
     color: '#fff',
     fontSize: 32,

@@ -28,11 +28,13 @@ public class SupabaseStorageService {
     }
 
     public String uploadImage(MultipartFile file) throws IOException {
-        String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload";
+        String filename = UUID.randomUUID() + "_" + originalName;
+        String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
 
         restClient.post()
             .uri("/" + BUCKET + "/" + filename)
-            .contentType(MediaType.parseMediaType(file.getContentType()))
+            .contentType(MediaType.parseMediaType(contentType))
             .body(file.getBytes())
             .retrieve()
             .toBodilessEntity();
