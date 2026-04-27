@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import * as Linking from 'expo-linking';
 import { Link } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -35,7 +36,9 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setLoading(true);
     try {
-      await forgotPassword(email.trim());
+      // createURL returns frontend://update-password on native, http://host/update-password on web
+      const redirectTo = Linking.createURL('update-password');
+      await forgotPassword(email.trim(), redirectTo);
       setSent(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to send reset email. Please try again.');
