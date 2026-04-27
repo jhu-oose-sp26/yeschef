@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.yeschef.api.DTO.AuthRequest;
 import com.yeschef.api.DTO.AuthResponse;
@@ -223,12 +224,16 @@ public class AuthService {
         Map<String, String> body = new HashMap<>();
         body.put("email", email);
 
-        String encodedRedirect = java.net.URLEncoder.encode(
-                "frontend://update-password", java.nio.charset.StandardCharsets.UTF_8);
+        java.net.URI recoverUri = UriComponentsBuilder
+                .fromUriString(supabaseUrl + "/auth/v1/recover")
+                .queryParam("redirect_to", "frontend://update-password")
+                .build()
+                .encode()
+                .toUri();
 
         try {
             restTemplate.exchange(
-                    supabaseUrl + "/auth/v1/recover?redirect_to=" + encodedRedirect,
+                    recoverUri,
                     HttpMethod.POST,
                     new HttpEntity<>(body, buildHeaders()),
                     new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
