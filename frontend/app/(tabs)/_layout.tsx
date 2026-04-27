@@ -1,7 +1,7 @@
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, useSegments } from 'expo-router';
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -9,6 +9,24 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 const DARK = '#1A1208';
 const TEAL = '#05A8AA';
 const RED = '#BC412B';
+const INACTIVE = 'rgba(255,255,255,0.4)';
+
+// Routes inside the `profile` stack that are actually about *another* user.
+// When the active route is one of these, we want the Friends tab to appear
+// highlighted instead of Profile, since the user navigated here from Friends.
+const FRIENDS_OWNED_PROFILE_ROUTES = new Set(['user-profile', 'user-posts']);
+
+function useFriendsOwnedRouteActive() {
+  const segments = useSegments();
+  // Expected shape when in a friend-owned profile route:
+  //   ['(tabs)', 'profile', 'user-profile' | 'user-posts']
+  for (let i = 0; i < segments.length - 1; i += 1) {
+    if (segments[i] === 'profile' && FRIENDS_OWNED_PROFILE_ROUTES.has(segments[i + 1])) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function CreateTabButton({ onPress, accessibilityState }: BottomTabBarButtonProps) {
   return (
@@ -52,12 +70,36 @@ function ProfileTabButton(props: BottomTabBarButtonProps) {
   );
 }
 
+function FriendsTabIcon({ color }: { color: string }) {
+  const friendsOwned = useFriendsOwnedRouteActive();
+  const effectiveColor = friendsOwned ? TEAL : color;
+  return <IconSymbol size={26} name="person.2.fill" color={effectiveColor} />;
+}
+
+function ProfileTabIcon({ color }: { color: string }) {
+  const friendsOwned = useFriendsOwnedRouteActive();
+  const effectiveColor = friendsOwned ? INACTIVE : color;
+  return <IconSymbol size={26} name="person.fill" color={effectiveColor} />;
+}
+
+function FriendsTabLabel({ children, color }: { children: string; color: string }) {
+  const friendsOwned = useFriendsOwnedRouteActive();
+  const effectiveColor = friendsOwned ? TEAL : color;
+  return <Text style={{ fontSize: 11, fontWeight: '600', color: effectiveColor }}>{children}</Text>;
+}
+
+function ProfileTabLabel({ children, color }: { children: string; color: string }) {
+  const friendsOwned = useFriendsOwnedRouteActive();
+  const effectiveColor = friendsOwned ? INACTIVE : color;
+  return <Text style={{ fontSize: 11, fontWeight: '600', color: effectiveColor }}>{children}</Text>;
+}
+
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: TEAL,
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.4)',
+        tabBarInactiveTintColor: INACTIVE,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
@@ -99,7 +141,8 @@ export default function TabLayout() {
         name="browse"
         options={{
           title: 'Friends',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.2.fill" color={color} />,
+          tabBarIcon: ({ color }) => <FriendsTabIcon color={color} />,
+          tabBarLabel: ({ color, children }) => <FriendsTabLabel color={color}>{children}</FriendsTabLabel>,
         }}
       />
       <Tabs.Screen
@@ -107,7 +150,8 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarButton: ProfileTabButton,
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.fill" color={color} />,
+          tabBarIcon: ({ color }) => <ProfileTabIcon color={color} />,
+          tabBarLabel: ({ color, children }) => <ProfileTabLabel color={color}>{children}</ProfileTabLabel>,
         }}
       />
       <Tabs.Screen
