@@ -1,11 +1,14 @@
 import { Platform } from 'react-native';
 import { postsUrl } from '@/constants/api';
 import { authHeaders, handleResponse } from './client';
-import type { RecipeCreateRequest } from './types';
+import type { RecipeCreateRequest, RecipeDtoResponse } from './types';
+import { normalizeRecipe } from './recipes';
+import type { Recipe } from './recipes';
 
 export interface PostResponse {
   id: number;
   image: string | null;
+  notes: string | null;
   recipe: {
     id: number;
     title: string;
@@ -15,9 +18,59 @@ export interface PostResponse {
   };
 }
 
+export interface FeedPost {
+  postId: number;
+  image: string | null;
+  notes: string | null;
+  recipe: Recipe;
+}
+
 export interface PostCreateRequest {
   image?: string;
+  notes?: string;
   recipe: RecipeCreateRequest;
+}
+
+export async function getPostById(postId: number): Promise<PostResponse | null> {
+  const res = await fetch(postsUrl(`/${postId}`), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  if (res.status === 404) return null;
+  return handleResponse<PostResponse>(res);
+}
+
+export async function getAllPosts(): Promise<PostResponse[]> {
+  const res = await fetch(postsUrl(), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  return handleResponse<PostResponse[]>(res);
+}
+
+/**
+ * Fetch posts for a user's friends from a single server-side endpoint.
+ * Replaces the previous 2-request pattern (all posts + friends' recipes).
+ */
+export async function getFriendsFeed(userId: number): Promise<FeedPost[]> {
+  const res = await fetch(postsUrl(`/friends/${userId}`), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  const posts = await handleResponse<Array<{ id: number; image: string | null; notes: string | null; recipe: RecipeDtoResponse }>>(res);
+  return posts.map((post) => ({
+    postId: post.id,
+    image: post.image,
+    notes: post.notes ?? null,
+    recipe: normalizeRecipe(post.recipe),
+  }));
+}
+
+export async function deletePost(postId: number): Promise<void> {
+  const res = await fetch(postsUrl(`/${postId}`), {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Delete post failed: ${res.status}`);
+  }
 }
 
 export async function getPostByRecipeId(recipeId: number): Promise<PostResponse | null> {

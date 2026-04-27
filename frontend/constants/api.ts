@@ -40,3 +40,7 @@ export function postsUrl(path = '') {
 export function notificationsUrl(path = '') {
   return `${API_BASE_URL}/notifications${path}`;
 }
+
+export function commentsUrl(path = '') {
+  return `${API_BASE_URL}/comments${path}`;
+}

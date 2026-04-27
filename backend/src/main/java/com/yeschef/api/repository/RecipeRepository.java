@@ -25,7 +25,18 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     // find a recipe by its source id
     List<Recipe> findBySourceId(Long sourceId);
+
+    @EntityGraph(attributePaths = {"source", "instruction", "instruction.steps", "ingredients"})
     List<Recipe> findBySourceIn(List<RecipeSource> sources);
+
+    // Single IN query replacing the N-query loop in /recipes/by-ingredients
+    @Query("""
+        SELECT DISTINCT r FROM Recipe r
+        JOIN r.ingredients i
+        WHERE LOWER(i.ingredient) IN :lowerIngredients
+        """)
+    @EntityGraph(attributePaths = {"source", "instruction", "instruction.steps", "ingredients"})
+    List<Recipe> findByIngredients(@Param("lowerIngredients") List<String> lowerIngredients);
 
     // FILTERING:
     // Query to get the time it takes to make a recipe by summing prep time and cooktime
@@ -74,5 +85,23 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     List<Recipe> findByName(@Param("name") String name);
 
     Optional<Recipe> findByTitleIgnoreCase(String title);
+
+    // Single query replacing the two-step source-lookup in UserController.getUserRecipes
+    @Query("SELECT r FROM Recipe r JOIN r.source s WHERE s.user.id = :userId")
+    List<Recipe> findByUserId(@Param("userId") Long userId);
+
+    // Single query replacing the in-memory friends traversal in UserController.getFriendsRecipes
+    @Query("""
+        SELECT DISTINCT r FROM Recipe r JOIN r.source s
+        WHERE s.user IN (SELECT f.friend FROM Friendship f WHERE f.self.id = :userId)
+        """)
+    List<Recipe> findByFriendsOf(@Param("userId") Long userId);
+
+    // Single query replacing the in-memory likes traversal in UserController.getFriendsLikedRecipes
+    @Query("""
+        SELECT DISTINCT hl.recipe FROM HasLiked hl
+        WHERE hl.user IN (SELECT f.friend FROM Friendship f WHERE f.self.id = :userId)
+        """)
+    List<Recipe> findLikedByFriendsOf(@Param("userId") Long userId);
 }
 

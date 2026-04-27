@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.yeschef.api.DTO.RecipeResponseDTO;
@@ -169,13 +168,10 @@ public class RecipeController {
     // Handle GET requests allowing for filtering by ingredients
     @GetMapping("/by-ingredients")
     public ResponseEntity<List<Recipe>> getByIngredients (@RequestParam List<String> ingredientList) {
-        // call db query from the recipe repo and return list
-        List<Recipe> allFilteredRecipes = new ArrayList<Recipe>();
-        for (String ingredient : ingredientList) {
-            List<Recipe> recipesFiltered = recipeRepository.findByIngredient(ingredient);
-            allFilteredRecipes.addAll(recipesFiltered);
-        }
-        return ResponseEntity.ok(allFilteredRecipes);
+        List<String> lowerIngredients = ingredientList.stream()
+            .map(String::toLowerCase)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(recipeRepository.findByIngredients(lowerIngredients));
     }
 
     // Handle GET requests allowing for filtering by time

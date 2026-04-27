@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,9 +13,10 @@ import { Image } from 'expo-image';
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getRecipe } from '@/lib/api/recipes';
+import { getRecipe, deleteRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
-import { getPostByRecipeId } from '@/lib/api/posts';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getPostByRecipeId, deletePost } from '@/lib/api/posts';
 import { addRecentId } from '@/lib/recentRecipes';
 import {
   getRatingsForRecipe,
@@ -91,6 +92,10 @@ export default function RecipeDetailScreen() {
   const [saveCount, setSaveCount] = useState(0);
   const [canSaveRecipe, setCanSaveRecipe] = useState(true);
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const [tasteDraft, setTasteDraft] = useState(0);
   const [easeDraft, setEaseDraft] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -147,9 +152,7 @@ export default function RecipeDetailScreen() {
     }
   }, [id, numId, authUser]);
 
-  useEffect(() => {
-    loadRecipe();
-  }, [loadRecipe]);
+  useFocusEffect(useCallback(() => { loadRecipe(); }, [loadRecipe]));
 
   const handleBack = () => {
     if (from === 'create') router.navigate('/');
@@ -202,6 +205,26 @@ export default function RecipeDetailScreen() {
       // silently ignore
     } finally {
       setSavingToggle(false);
+    }
+  };
+
+  const isOwner =
+    recipe !== null &&
+    recipe.source?.sourceType === 'USER' &&
+    recipe.creatorUsername === authUser?.username;
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      // Must delete the associated post first to avoid FK constraint violation
+      const post = await getPostByRecipeId(numId).catch(() => null);
+      if (post) await deletePost(post.id);
+      await deleteRecipe(numId);
+      handleBack();
+    } catch (e) {
+      setDeleting(false);
+      setDeleteError(e instanceof Error ? e.message : 'Failed to delete recipe.');
     }
   };
 
@@ -268,9 +291,48 @@ export default function RecipeDetailScreen() {
 
       {/* ── Dark Hero ── */}
       <View style={styles.hero}>
-        <Pressable onPress={handleBack} style={styles.backBtn}>
-          <Text style={styles.backText}>{'< BACK'}</Text>
-        </Pressable>
+        <View style={styles.heroNav}>
+          <Pressable onPress={handleBack} style={styles.backBtn}>
+            <Text style={styles.backText}>{'< BACK'}</Text>
+          </Pressable>
+          {isOwner && (
+            <View style={styles.ownerActions}>
+              <Pressable
+                style={styles.ownerBtn}
+                onPress={() => router.navigate({
+                  pathname: '/(tabs)/recipes/edit',
+                  params: { id: String(numId) },
+                })}
+              >
+                <IconSymbol name="pencil" size={18} color={GREEN} />
+              </Pressable>
+              <Pressable style={styles.ownerBtn} onPress={() => { setConfirmDelete(true); setDeleteError(null); }}>
+                <IconSymbol name="trash" size={18} color={RED} />
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {confirmDelete && (
+          <View style={styles.deleteConfirmBanner}>
+            <Text style={styles.deleteConfirmText}>Delete this recipe? This cannot be undone.</Text>
+            {deleteError && <Text style={styles.deleteErrorText}>{deleteError}</Text>}
+            <View style={styles.deleteConfirmBtns}>
+              <Pressable style={styles.deleteCancelBtn} onPress={() => { setConfirmDelete(false); setDeleteError(null); }}>
+                <Text style={styles.deleteCancelBtnText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.deleteConfirmBtn, { opacity: deleting ? 0.6 : 1 }]}
+                onPress={handleDelete}
+                disabled={deleting}
+              >
+                {deleting
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.deleteConfirmBtnText}>Delete</Text>}
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* Rating display */}
         {overallAvg != null && (
@@ -444,8 +506,64 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 30,
   },
-  backBtn: { marginBottom: 20 },
+  heroNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  backBtn: {},
   backText: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600', letterSpacing: 0.5 },
+  ownerActions: { flexDirection: 'row', gap: 8 },
+  ownerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteConfirmBanner: {
+    backgroundColor: 'rgba(188,65,43,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(188,65,43,0.4)',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+  },
+  deleteConfirmText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  deleteErrorText: {
+    color: RED,
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  deleteConfirmBtns: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
+  },
+  deleteCancelBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  deleteCancelBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  deleteConfirmBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: RED,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  deleteConfirmBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   heroRatingRow: {
     flexDirection: 'row',
     alignItems: 'baseline',

@@ -6,8 +6,9 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(
-    name ="ratings",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "recipe_id"})
+    name = "ratings",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "recipe_id"}),
+    indexes = @Index(name = "idx_ratings_recipe_id", columnList = "recipe_id")
 )
 public class Rating {
     
