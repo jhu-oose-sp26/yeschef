@@ -34,26 +34,31 @@ export default function UserPostsScreen() {
     }
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleBack = () => {
-    if (from === 'find-friends') router.navigate('/browse');
-    else router.navigate('/(tabs)/profile');
+    if (router.canGoBack()) router.back();
+    else if (from === 'find-friends') router.navigate('/browse');
+    else if (from === 'user-profile') {
+      router.navigate({
+        pathname: '/profile/user-profile',
+        params: { userId, username },
+      });
+    } else router.navigate('/(tabs)/profile');
   };
 
   return (
     <ThemedView style={styles.screen}>
-
-      {/* ── Teal Header ── */}
       <View style={styles.header}>
         <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backText}>← BACK</Text>
+          <Text style={styles.backText}>{'< BACK'}</Text>
         </Pressable>
         <Text style={styles.headerTitle}>@{username ?? 'user'}</Text>
         <Text style={styles.headerSub}>recipes posted</Text>
       </View>
 
-      {/* ── Body ── */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={TEAL} />
@@ -67,7 +72,7 @@ export default function UserPostsScreen() {
         </View>
       ) : recipes.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>@{username} hasn't posted any recipes yet.</Text>
+          <Text style={styles.emptyText}>@{username} has not posted any recipes yet.</Text>
         </View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
@@ -75,35 +80,43 @@ export default function UserPostsScreen() {
             <View key={recipe.id} style={styles.card}>
               <Pressable
                 style={({ pressed }) => [styles.cardPressable, { opacity: pressed ? 0.85 : 1 }]}
-                onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'search' } })}
-              >
+                onPress={() =>
+                  router.push({
+                    pathname: '/recipes/[id]',
+                    params: {
+                      id: String(recipe.id),
+                      from: 'user-posts',
+                      userId,
+                      username,
+                    },
+                  })
+                }>
                 <View style={styles.cardContent}>
                   <Text style={styles.cardTitle} numberOfLines={1}>{recipe.title}</Text>
-                  {recipe.ingredients && recipe.ingredients.length > 0 && (
+                  {recipe.ingredients && recipe.ingredients.length > 0 ? (
                     <Text style={styles.cardSub}>
                       {recipe.ingredients.length} ingredient{recipe.ingredients.length !== 1 ? 's' : ''}
                     </Text>
-                  )}
+                  ) : null}
                   <View style={styles.pillRow}>
-                    {recipe.instruction?.prepTime != null && (
+                    {recipe.instruction?.prepTime != null ? (
                       <View style={styles.pill}>
                         <Text style={styles.pillText}>prep {recipe.instruction.prepTime} min</Text>
                       </View>
-                    )}
-                    {recipe.instruction?.cookTime != null && (
+                    ) : null}
+                    {recipe.instruction?.cookTime != null ? (
                       <View style={styles.pill}>
                         <Text style={styles.pillText}>cook {recipe.instruction.cookTime} min</Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 </View>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={styles.chevron}>{'>'}</Text>
               </Pressable>
             </View>
           ))}
         </ScrollView>
       )}
-
     </ThemedView>
   );
 }
@@ -115,7 +128,6 @@ const styles = StyleSheet.create({
   retryBtn: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10, backgroundColor: RED },
   retryBtnText: { color: '#fff', fontWeight: '600' },
   emptyText: { fontSize: 15, color: '#2C1A0E', opacity: 0.6, fontStyle: 'italic', textAlign: 'center' },
-
   header: {
     backgroundColor: TEAL,
     paddingTop: 56,
@@ -126,10 +138,8 @@ const styles = StyleSheet.create({
   backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
   headerTitle: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 2 },
   headerSub: { color: '#fff', fontSize: 14, opacity: 0.85 },
-
   scroll: { flex: 1 },
   list: { padding: 20, paddingBottom: 48 },
-
   card: {
     backgroundColor: GREEN,
     borderRadius: 14,

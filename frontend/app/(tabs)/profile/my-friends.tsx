@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { getFriends, getUsers, removeFriend } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 import type { User } from '@/lib/api/users';
@@ -14,7 +14,7 @@ const RED = '#BC412B';
 
 export default function MyFriendsScreen() {
   const router = useRouter();
-  const { userId } = useLocalSearchParams<{ userId: string }>();
+  const { userId, username } = useLocalSearchParams<{ userId: string; username?: string }>();
   const { user: authUser } = useAuth();
 
   const [friends, setFriends] = useState<User[]>([]);
@@ -32,7 +32,7 @@ export default function MyFriendsScreen() {
         getUsers(),
       ]);
       const usernameSet = new Set(friendUsernames);
-      setFriends(allUsers.filter((u) => usernameSet.has(u.username)));
+      setFriends(allUsers.filter((user) => usernameSet.has(user.username)));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load friends');
     } finally {
@@ -40,35 +40,53 @@ export default function MyFriendsScreen() {
     }
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleRemove = async (target: User) => {
     if (!authUser) return;
-    setPending((p) => new Set(p).add(target.id));
+    setPending((current) => new Set(current).add(target.id));
     try {
       await removeFriend(authUser.id, target.id);
-      setFriends((prev) => prev.filter((f) => f.id !== target.id));
+      setFriends((prev) => prev.filter((friend) => friend.id !== target.id));
     } catch {
       // silently ignore
     } finally {
-      setPending((p) => { const s = new Set(p); s.delete(target.id); return s; });
+      setPending((current) => {
+        const next = new Set(current);
+        next.delete(target.id);
+        return next;
+      });
     }
   };
 
   const isOwnProfile = authUser && String(authUser.id) === userId;
 
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else if (isOwnProfile) router.navigate('/(tabs)/profile');
+    else {
+      router.navigate({
+        pathname: '/profile/user-profile',
+        params: {
+          userId,
+          username: username ?? '',
+        },
+      });
+    }
+  };
+
   return (
     <ThemedView style={styles.screen}>
-
-      {/* ── Teal Header ── */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.navigate('/(tabs)/profile')} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backText}>← BACK</Text>
+        <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
+          <Text style={styles.backText}>{'< BACK'}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>My Friends</Text>
+        <Text style={styles.headerTitle}>{isOwnProfile ? 'My Friends' : `@${username ?? 'user'}`}</Text>
+        <Text style={styles.headerSubtitle}>{isOwnProfile ? 'your circle' : 'friends list'}</Text>
       </View>
 
-      {/* ── Body ── */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={TEAL} />
@@ -82,13 +100,14 @@ export default function MyFriendsScreen() {
         </View>
       ) : friends.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>No friends yet.</Text>
-          <Pressable
-            style={styles.findBtn}
-            onPress={() => router.navigate('/browse')}
-          >
-            <Text style={styles.findBtnText}>Find Friends</Text>
-          </Pressable>
+          <Text style={styles.emptyText}>
+            {isOwnProfile ? 'No friends yet.' : `@${username ?? 'user'} has no friends yet.`}
+          </Text>
+          {isOwnProfile ? (
+            <Pressable style={styles.findBtn} onPress={() => router.navigate('/browse')}>
+              <Text style={styles.findBtnText}>Find Friends</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
@@ -96,30 +115,39 @@ export default function MyFriendsScreen() {
             <Pressable
               key={friend.id}
               style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}
-              onPress={() => router.push({ pathname: '/profile/user-posts', params: { userId: String(friend.id), username: friend.username, from: 'my-friends' } })}
-            >
+              onPress={() =>
+                router.push({
+                  pathname: '/profile/user-profile',
+                  params: {
+                    userId: String(friend.id),
+                    username: friend.username,
+                    from: 'my-friends',
+                  },
+                })
+              }>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{friend.username[0]?.toUpperCase() ?? '?'}</Text>
               </View>
               <Text style={styles.username} numberOfLines={1}>@{friend.username}</Text>
-              {isOwnProfile && (
+              {isOwnProfile ? (
                 <Pressable
-                  onPress={() => handleRemove(friend)}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    void handleRemove(friend);
+                  }}
                   disabled={pending.has(friend.id)}
-                  style={({ pressed }) => [styles.removeBtn, { opacity: pending.has(friend.id) || pressed ? 0.6 : 1 }]}
-                >
+                  style={({ pressed }) => [styles.removeBtn, { opacity: pending.has(friend.id) || pressed ? 0.6 : 1 }]}>
                   {pending.has(friend.id) ? (
                     <ActivityIndicator size="small" color={RED} />
                   ) : (
                     <Text style={styles.removeBtnText}>Remove</Text>
                   )}
                 </Pressable>
-              )}
+              ) : null}
             </Pressable>
           ))}
         </ScrollView>
       )}
-
     </ThemedView>
   );
 }
@@ -130,8 +158,6 @@ const styles = StyleSheet.create({
   errorText: { color: '#c00', textAlign: 'center' },
   retryBtn: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10, backgroundColor: RED },
   retryBtnText: { color: '#fff', fontWeight: '600' },
-
-  // ── Header ──
   header: {
     backgroundColor: TEAL,
     paddingTop: 56,
@@ -141,9 +167,8 @@ const styles = StyleSheet.create({
   backBtn: { marginBottom: 10 },
   backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
   headerTitle: { color: '#fff', fontSize: 30, fontWeight: '800' },
-
-  // ── Empty state ──
-  emptyText: { fontSize: 15, color: '#2C1A0E', opacity: 0.6, fontStyle: 'italic' },
+  headerSubtitle: { color: '#fff', fontSize: 14, opacity: 0.82, marginTop: 2 },
+  emptyText: { fontSize: 15, color: '#2C1A0E', opacity: 0.6, fontStyle: 'italic', textAlign: 'center' },
   findBtn: {
     backgroundColor: TEAL,
     paddingHorizontal: 24,
@@ -151,12 +176,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   findBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  // ── List ──
   scroll: { flex: 1 },
   list: { padding: 20, paddingBottom: 48 },
-
-  // ── Friend card ──
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -182,8 +203,6 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   username: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1E2A1E' },
-
-  // ── Remove button ──
   removeBtn: {
     paddingHorizontal: 14,
     paddingVertical: 7,

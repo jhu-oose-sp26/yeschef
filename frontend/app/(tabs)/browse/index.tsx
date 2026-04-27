@@ -158,8 +158,7 @@ export default function FriendsScreen() {
         >
           <Text style={styles.backPillText}>{'< BACK'}</Text>
         </Pressable>
-        <Text style={styles.headerEyebrow}>JULIA&apos;S CIRCLE</Text>
-        <Text style={styles.headerTitle}>friends</Text>
+        <Text style={styles.headerTitle}>my friends</Text>
       </View>
 
       <View style={styles.body}>
@@ -211,7 +210,7 @@ export default function FriendsScreen() {
                     style={({ pressed }) => [styles.userCard, pressed && styles.pressed]}
                     onPress={() =>
                       router.push({
-                        pathname: '/profile/user-posts',
+                        pathname: '/profile/user-profile',
                         params: {
                           userId: String(profile.id),
                           username: profile.username,
@@ -287,13 +286,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.8,
-  },
-  headerEyebrow: {
-    color: 'rgba(255,248,242,0.62)',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 2.2,
-    marginBottom: 8,
   },
   headerTitle: {
     color: '#FFF8F2',

@@ -1,5 +1,5 @@
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -35,6 +35,20 @@ function CreateTabButton({ onPress, accessibilityState }: BottomTabBarButtonProp
         <IconSymbol size={26} name="plus" color="#fff" />
       </View>
     </Pressable>
+  );
+}
+
+function ProfileTabButton(props: BottomTabBarButtonProps) {
+  const router = useRouter();
+
+  return (
+    <HapticTab
+      {...props}
+      onPress={(event) => {
+        props.onPress?.(event);
+        router.navigate('/profile');
+      }}
+    />
   );
 }
 
@@ -92,6 +106,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          tabBarButton: ProfileTabButton,
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.fill" color={color} />,
         }}
       />
