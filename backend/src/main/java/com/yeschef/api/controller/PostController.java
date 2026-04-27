@@ -85,7 +85,7 @@ public class PostController {
     // GET BY RECIPE ID
     @GetMapping("/by-recipe/{recipeId}")
     public ResponseEntity<PostResponseDTO> getPostByRecipeId(@PathVariable Long recipeId) {
-        return postRepository.findByRecipeId(recipeId)
+        return postRepository.findFirstByRecipeId(recipeId)
             .map(post -> ResponseEntity.ok(toPostDTO(post)))
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -143,10 +143,6 @@ public class PostController {
 
                 return recipeRepository.save(newRecipe);
             });
-
-        if (postRepository.findByRecipeId(recipe.getId()).isPresent()) {
-            return ResponseEntity.badRequest().build();
-        }
 
         Post post = new Post();
         post.setRecipe(recipe);

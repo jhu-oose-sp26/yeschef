@@ -142,7 +142,7 @@ class PostControllerTests {
         when(recipeRepository.findByTitleIgnoreCase("Pasta"))
             .thenReturn(Optional.of(existing));
 
-        when(postRepository.findByRecipeId(1L))
+        when(postRepository.findFirstByRecipeId(1L))
             .thenReturn(Optional.empty());
 
         when(postRepository.save(any(Post.class)))

@@ -5,16 +5,13 @@ import java.time.Instant;
 import java.util.List;
 
 @Entity
-@Table(
-    name = "posts",
-    uniqueConstraints = @UniqueConstraint(columnNames = "recipe_id")
-)
+@Table(name = "posts")
 public class Post {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "recipe_id", nullable = false)
     private Recipe recipe;
 
