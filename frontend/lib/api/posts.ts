@@ -82,12 +82,14 @@ export async function getPostByRecipeId(recipeId: number): Promise<PostResponse 
 }
 
 export async function createPost(body: PostCreateRequest): Promise<PostResponse> {
-  const res = await fetch(postsUrl(), {
+  const serialized = JSON.stringify(body);
+  const doFetch = () => fetch(postsUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify(body),
+    body: serialized,
   });
-  return handleResponse<PostResponse>(res);
+  const res = await doFetch();
+  return handleResponse<PostResponse>(res, doFetch);
 }
 
 export async function uploadPostImage(imageUri: string): Promise<string> {

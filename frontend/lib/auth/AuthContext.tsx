@@ -59,31 +59,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     async function handleUnauthorized() {
-      const stored = await storage.getItem(REFRESH_KEY).catch(() => null);
-      if (stored) {
-        try {
-          const res = await apiRefresh(stored);
-          tokenStore.set(res.accessToken);
-          setToken(res.accessToken);
-          setRefreshToken(res.refreshToken);
-          setUser(res.user);
-          await Promise.all([
-            storage.setItem(TOKEN_KEY, res.accessToken),
-            storage.setItem(REFRESH_KEY, res.refreshToken),
-            storage.setItem(USER_KEY, JSON.stringify(res.user)),
-          ]);
-          return; // recovered — stay logged in
-        } catch {
-          // refresh failed — fall through to full logout
+      // If a refresh is already in progress, don't start another one.
+      if (tokenStore.getPendingRefresh()) return;
+
+      // Set the promise BEFORE the first await so client.ts can await it
+      // synchronously after dispatchEvent() returns.
+      let resolveRefresh = () => {};
+      tokenStore.setPendingRefresh(
+        new Promise<void>((res) => { resolveRefresh = res; }),
+      );
+
+      let refreshed = false;
+      try {
+        const stored = await storage.getItem(REFRESH_KEY).catch(() => null);
+        if (stored) {
+          try {
+            const res = await apiRefresh(stored);
+            tokenStore.set(res.accessToken);
+            setToken(res.accessToken);
+            setRefreshToken(res.refreshToken);
+            setUser(res.user);
+            await Promise.all([
+              storage.setItem(TOKEN_KEY, res.accessToken),
+              storage.setItem(REFRESH_KEY, res.refreshToken),
+              storage.setItem(USER_KEY, JSON.stringify(res.user)),
+            ]);
+            refreshed = true;
+          } catch {
+            // refresh failed — fall through to full logout
+          }
         }
+        if (!refreshed) {
+          tokenStore.set(null);
+          setToken(null);
+          setRefreshToken(null);
+          setUser(null);
+          storage.deleteItem(TOKEN_KEY).catch(() => {});
+          storage.deleteItem(REFRESH_KEY).catch(() => {});
+          storage.deleteItem(USER_KEY).catch(() => {});
+        }
+      } finally {
+        resolveRefresh(); // always unblock any waiters
+        tokenStore.setPendingRefresh(null);
       }
-      tokenStore.set(null);
-      setToken(null);
-      setRefreshToken(null);
-      setUser(null);
-      storage.deleteItem(TOKEN_KEY).catch(() => {});
-      storage.deleteItem(REFRESH_KEY).catch(() => {});
-      storage.deleteItem(USER_KEY).catch(() => {});
     }
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);

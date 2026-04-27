@@ -163,12 +163,12 @@ public class UserController {
         // notify
         notificationService.createNotification(
             friend,
-            self, 
+            self,
             Notification.Type.FRIEND_REQUEST,
             null // not necessary
         );
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // DELETE: delete a friendship
