@@ -201,27 +201,29 @@ export default function UserProfileScreen() {
           <Text style={styles.navArrow}>{'>'}</Text>
         </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [styles.navCard, pressed && styles.pressed]}
-          onPress={() =>
-            router.push({
-              pathname: '/profile/my-saved',
-              params: {
-                userId: String(profile.id),
-                username: profile.username,
-                from: 'user-profile',
-              },
-            })
-          }>
-          <View style={styles.navIconWrap}>
-            <MaterialCommunityIcons name="bookmark-outline" size={20} color={TEAL} />
-          </View>
-          <View style={styles.navTextWrap}>
-            <Text style={styles.navTitle}>saved recipes</Text>
-            <Text style={styles.navSubtitle}>Look through the recipes they have saved.</Text>
-          </View>
-          <Text style={styles.navArrow}>{'>'}</Text>
-        </Pressable>
+        {isOwnProfile ? (
+          <Pressable
+            style={({ pressed }) => [styles.navCard, pressed && styles.pressed]}
+            onPress={() =>
+              router.push({
+                pathname: '/profile/my-saved',
+                params: {
+                  userId: String(profile.id),
+                  username: profile.username,
+                  from: 'user-profile',
+                },
+              })
+            }>
+            <View style={styles.navIconWrap}>
+              <MaterialCommunityIcons name="bookmark-outline" size={20} color={TEAL} />
+            </View>
+            <View style={styles.navTextWrap}>
+              <Text style={styles.navTitle}>saved recipes</Text>
+              <Text style={styles.navSubtitle}>Look through the recipes you have saved.</Text>
+            </View>
+            <Text style={styles.navArrow}>{'>'}</Text>
+          </Pressable>
+        ) : null}
 
         {!profile.isFriend && !isOwnProfile ? (
           <Text style={styles.noticeText}>
