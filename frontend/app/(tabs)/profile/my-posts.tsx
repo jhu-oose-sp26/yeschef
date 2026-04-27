@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, Link, useLocalSearchParams, useRouter } from 'expo-router';
 
 import RecipeCard from '@/components/RecipeCard';
 import { ThemedText } from '@/components/themed-text';
@@ -37,7 +37,7 @@ export default function MyPostsScreen() {
     }
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   return (
     <ThemedView style={styles.screen}>

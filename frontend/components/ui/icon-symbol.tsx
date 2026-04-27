@@ -34,6 +34,7 @@ const MAPPING = {
   'fork.knife': 'restaurant',
   'pencil': 'edit',
   'bell.fill': 'notifications',
+  'trash': 'delete',
 } as IconMapping;
 
 /**

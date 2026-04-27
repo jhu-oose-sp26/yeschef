@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -51,9 +51,7 @@ export default function ProfileScreen() {
     }
   }, [authUser]);
 
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  useFocusEffect(useCallback(() => { loadProfile(); }, [loadProfile]));
 
   if (loading) {
     return (
