@@ -190,6 +190,17 @@ public class PostController {
         }
     }
     
+    // GET FRIENDS FEED
+    @GetMapping("/friends/{userId}")
+    public ResponseEntity<List<PostResponseDTO>> getFriendsFeed(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+            postRepository.findByFriendsOf(userId)
+                .stream()
+                .map(this::toFeedPostDTO)
+                .toList()
+        );
+    }
+
     // DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
@@ -201,7 +212,26 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
-    // DTO MAPPER
+    // DTO MAPPERS
+    private PostResponseDTO toFeedPostDTO(Post post) {
+        Recipe recipe = post.getRecipe();
+        RecipeResponseDTO recipeDTO = new RecipeResponseDTO(
+            recipe.getId(),
+            recipe.getTitle(),
+            recipe.getSource().getSourceType().toString(),
+            recipe.getInstruction().getPrepTime(),
+            recipe.getInstruction().getCookTime(),
+            List.of(),
+            List.of()
+        );
+        User creator = recipe.getSource().getUser();
+        if (creator != null) {
+            recipeDTO.setUserId(creator.getId());
+            recipeDTO.setUsername(creator.getUsername());
+        }
+        return new PostResponseDTO(post.getId(), post.getImage(), post.getNotes(), recipeDTO);
+    }
+
     private PostResponseDTO toPostDTO(Post post) {
         return new PostResponseDTO(
             post.getId(),

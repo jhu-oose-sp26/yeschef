@@ -34,7 +34,7 @@ export default function HomeScreen() {
 
   const loadFeed = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
-    if (isRefresh) setRefreshing(true); else setLoading(true);
+    if (isRefresh) setRefreshing(true); else if (feed.length === 0) setLoading(true);
     setError(null);
     try {
       const [posts, friends] = await Promise.all([
