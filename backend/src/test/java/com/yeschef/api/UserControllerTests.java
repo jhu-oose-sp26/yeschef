@@ -186,7 +186,7 @@ class UserControllerTests {
         mockMvc.perform(post("/users/{id}/friends/{friendId}", 1L, 2L)
                 .with(user("testuser").roles("USER"))
                 .with(csrf()))
-            .andExpect(status().isOk());
+            .andExpect(status().isNoContent());
 
         verify(friendshipRepository, times(2)).save(any(Friendship.class));
     }
@@ -204,21 +204,12 @@ class UserControllerTests {
 
     @Test
     void getUserRecipes_returnsRecipesCreatedByUser() throws Exception {
-        User alice = new User();
-        alice.setId(1L);
-
-        RecipeSource aliceSource = new RecipeSource();
-        ReflectionTestUtils.setField(aliceSource, "id", 10L);
-        aliceSource.setUser(alice);
-        alice.setRecipeSources(java.util.Collections.singletonList(aliceSource));
-
         Recipe recipe = new Recipe();
         recipe.setId(42L);
         recipe.setTitle("Alice Soup");
-        recipe.setSource(aliceSource);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
-        when(recipeRepository.findBySourceIn(anyList())).thenReturn(java.util.Collections.singletonList(recipe));
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findByUserId(1L)).thenReturn(java.util.Collections.singletonList(recipe));
 
         mockMvc.perform(get("/users/{id}/recipes", 1L).with(user("testuser").roles("USER")))
             .andExpect(status().isOk())
@@ -227,27 +218,12 @@ class UserControllerTests {
 
     @Test
     void getFriendsLikedRecipes_returnsRecipesLikedByFriend() throws Exception {
-        User alice = new User();
-        alice.setId(1L);
-
-        User bob = new User();
-        bob.setId(2L);
-
         Recipe recipe = new Recipe();
         recipe.setId(100L);
         recipe.setTitle("Tacos");
 
-        HasLiked hasLiked = new HasLiked();
-        hasLiked.setUser(bob);
-        hasLiked.setRecipe(recipe);
-        bob.setLikes(java.util.Collections.singletonList(hasLiked));
-
-        Friendship friendship = new Friendship();
-        friendship.setSelf(alice);
-        friendship.setFriend(bob);
-        alice.setFriendshipsSent(java.util.Collections.singletonList(friendship));
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findLikedByFriendsOf(1L)).thenReturn(java.util.Collections.singletonList(recipe));
 
         mockMvc.perform(get("/users/{id}/friends/liked", 1L).with(user("testuser").roles("USER")))
             .andExpect(status().isOk())
@@ -278,7 +254,7 @@ class UserControllerTests {
         mockMvc.perform(post("/users/{id}/friends/{friendId}", 1L, 2L)
                 .with(user("testuser").roles("USER"))
                 .with(csrf()))
-            .andExpect(status().isOk());
+            .andExpect(status().isNoContent());
 
         verify(friendshipRepository, times(2)).save(any(Friendship.class));
 
