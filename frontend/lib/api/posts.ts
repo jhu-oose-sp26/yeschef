@@ -63,6 +63,19 @@ export async function getFriendsFeed(userId: number): Promise<FeedPost[]> {
   }));
 }
 
+export async function getUserPosts(userId: number): Promise<FeedPost[]> {
+  const res = await fetch(postsUrl(`/by-user/${userId}`), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  const posts = await handleResponse<Array<{ id: number; image: string | null; notes: string | null; recipe: RecipeDtoResponse }>>(res);
+  return posts.map((post) => ({
+    postId: post.id,
+    image: post.image,
+    notes: post.notes ?? null,
+    recipe: normalizeRecipe(post.recipe),
+  }));
+}
+
 export async function deletePost(postId: number): Promise<void> {
   const res = await fetch(postsUrl(`/${postId}`), {
     method: 'DELETE',

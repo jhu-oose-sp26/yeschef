@@ -131,18 +131,14 @@ public class PostController {
 
         RecipeRequestDTO recipeDTO = dto.getRecipe();
 
-        Recipe recipe = recipeRepository.findByTitleIgnoreCase(recipeDTO.getTitle())
-            .orElseGet(() -> {
-                Recipe newRecipe = toEntity(recipeDTO);
-
-                if (recipeDTO.getUserId() != null) {
-                    User user = userRepository.findById(recipeDTO.getUserId())
-                        .orElseThrow();
-                    newRecipe.getSource().setUser(user);
-                }
-
-                return recipeRepository.save(newRecipe);
-            });
+        Recipe newRecipe = toEntity(recipeDTO);
+        if (recipeDTO.getUserId() != null) {
+            User user = userRepository.findById(recipeDTO.getUserId()).orElseThrow();
+            RecipeSource source = newRecipe.getSource();
+            source.setUser(user);
+            sourceRepository.save(source);
+        }
+        Recipe recipe = recipeRepository.save(newRecipe);
 
         Post post = new Post();
         post.setRecipe(recipe);
@@ -187,6 +183,17 @@ public class PostController {
         }
     }
     
+    // GET POSTS BY USER
+    @GetMapping("/by-user/{userId}")
+    public ResponseEntity<List<PostResponseDTO>> getPostsByUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+            postRepository.findBySourceUserId(userId)
+                .stream()
+                .map(this::toFeedPostDTO)
+                .toList()
+        );
+    }
+
     // GET FRIENDS FEED
     @GetMapping("/friends/{userId}")
     public ResponseEntity<List<PostResponseDTO>> getFriendsFeed(@PathVariable Long userId) {
