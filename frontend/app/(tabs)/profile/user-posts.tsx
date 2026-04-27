@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { getUserRecipes } from '@/lib/api/users';
 import type { Recipe } from '@/lib/api/recipes';
+import { getPostByRecipeId } from '@/lib/api/posts';
 
 const DARK = '#1A1208';
 const GREEN = '#B8D5B8';
@@ -50,6 +51,7 @@ export default function UserPostsScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [navigating, setNavigating] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -71,6 +73,22 @@ export default function UserPostsScreen() {
 
   const heroLabel = useMemo(() => getPossessiveKitchenLabel(username), [username]);
   const heroTitle = useMemo(() => getPostsTitle(username), [username]);
+
+  const handleCardPress = async (recipe: Recipe) => {
+    setNavigating(recipe.id);
+    try {
+      const post = await getPostByRecipeId(recipe.id);
+      if (post) {
+        router.push({ pathname: '/posts/[id]', params: { id: String(post.id) } });
+      } else {
+        router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'user-posts', userId, username } });
+      }
+    } catch {
+      router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'user-posts', userId, username } });
+    } finally {
+      setNavigating(null);
+    }
+  };
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -128,17 +146,8 @@ export default function UserPostsScreen() {
                 <Pressable
                   key={recipe.id}
                   style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/recipes/[id]',
-                      params: {
-                        id: String(recipe.id),
-                        from: 'user-posts',
-                        userId,
-                        username,
-                      },
-                    })
-                  }>
+                  disabled={navigating === recipe.id}
+                  onPress={() => handleCardPress(recipe)}>
                   <View style={styles.cardTopAccent} />
                   <View style={styles.cardMain}>
                     <View style={styles.cardTextWrap}>
@@ -166,10 +175,12 @@ export default function UserPostsScreen() {
 
                   <View style={styles.cardFooter}>
                     <Text style={styles.footerText}>
-                      @{username ?? 'user'} tap to view full recipe
+                      @{username ?? 'user'} tap to view post
                     </Text>
                     <View style={styles.arrowCircle}>
-                      <MaterialIcons name="chevron-right" size={22} color={CREAM} />
+                      {navigating === recipe.id
+                        ? <ActivityIndicator size="small" color={CREAM} />
+                        : <MaterialIcons name="chevron-right" size={22} color={CREAM} />}
                     </View>
                   </View>
                 </Pressable>

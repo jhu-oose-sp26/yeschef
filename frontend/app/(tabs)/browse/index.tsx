@@ -121,10 +121,15 @@ export default function FriendsScreen() {
     try {
       if (friendUsernames.has(targetUser.username)) {
         await removeFriend(authUser.id, targetUser.id);
+        setFriendUsernames((prev) => {
+          const next = new Set(prev);
+          next.delete(targetUser.username);
+          return next;
+        });
       } else {
         await addFriend(authUser.id, targetUser.id);
+        setFriendUsernames((prev) => new Set(prev).add(targetUser.username));
       }
-      await load();
     } catch {
       // ignore friend toggle failures in the UI
     } finally {
