@@ -220,13 +220,13 @@ public class AuthService {
         }
     }
 
-    public void forgotPassword(String email) {
+    public void forgotPassword(String email, String redirectTo) {
         Map<String, String> body = new HashMap<>();
         body.put("email", email);
 
         java.net.URI recoverUri = UriComponentsBuilder
                 .fromUriString(supabaseUrl + "/auth/v1/recover")
-                .queryParam("redirect_to", "frontend://update-password")
+                .queryParam("redirect_to", redirectTo)
                 .build()
                 .encode()
                 .toUri();
