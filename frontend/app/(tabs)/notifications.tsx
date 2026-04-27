@@ -34,7 +34,7 @@ type NotificationItem = {
   highlight: string;
   timeLabel: string;
   isNew: boolean;
-  recipeId: number | null;
+  postId: number | null;
 };
 
 const META_BY_KIND: Record<
@@ -126,7 +126,7 @@ function toNotificationItem(notification: NotificationResponse): NotificationIte
         highlight: notification.referenceTitle ?? '',
         timeLabel: formatTimeLabel(notification.createdAt),
         isNew: !notification.isRead,
-        recipeId: notification.recipeId,
+        postId: notification.postId,
       };
     case 'RATING':
       return {
@@ -137,7 +137,7 @@ function toNotificationItem(notification: NotificationResponse): NotificationIte
         highlight: notification.referenceTitle ?? '',
         timeLabel: formatTimeLabel(notification.createdAt),
         isNew: !notification.isRead,
-        recipeId: notification.recipeId,
+        postId: notification.postId,
       };
     case 'FRIEND_REQUEST':
       return {
@@ -148,7 +148,7 @@ function toNotificationItem(notification: NotificationResponse): NotificationIte
         highlight: '',
         timeLabel: formatTimeLabel(notification.createdAt),
         isNew: !notification.isRead,
-        recipeId: null,
+        postId: null,
       };
     case 'SAVED':
       return {
@@ -159,7 +159,7 @@ function toNotificationItem(notification: NotificationResponse): NotificationIte
         highlight: notification.referenceTitle ?? '',
         timeLabel: formatTimeLabel(notification.createdAt),
         isNew: !notification.isRead,
-        recipeId: notification.recipeId,
+        postId: notification.postId,
       };
     case 'LIKED':
       return {
@@ -170,7 +170,7 @@ function toNotificationItem(notification: NotificationResponse): NotificationIte
         highlight: notification.referenceTitle ?? '',
         timeLabel: formatTimeLabel(notification.createdAt),
         isNew: !notification.isRead,
-        recipeId: notification.recipeId,
+        postId: notification.postId,
       };
   }
 }
@@ -324,13 +324,10 @@ function NotificationCard({ notification }: { notification: NotificationItem }) 
     <Pressable
       style={({ pressed }) => [styles.card, { borderLeftColor: meta.accent }, pressed && styles.pressed]}
       onPress={() => {
-        if (notification.recipeId != null) {
+        if (notification.postId != null) {
           router.push({
-            pathname: '/recipes/[id]',
-            params: {
-              id: String(notification.recipeId),
-              from: 'notifications',
-            },
+            pathname: '/(tabs)/posts/[id]',
+            params: { id: String(notification.postId) },
           });
         }
       }}

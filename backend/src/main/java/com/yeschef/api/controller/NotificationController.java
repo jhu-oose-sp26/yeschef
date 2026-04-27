@@ -70,12 +70,14 @@ public class NotificationController {
     }
 
     private NotificationResponseDTO toDTO(Notification notification) {
+        Long postId = null;
         Long recipeId = null;
         String referenceTitle = null;
 
         if (notification.getType() == Notification.Type.COMMENT && notification.getReferenceId() != null) {
             Optional<Post> postMaybe = postRepository.findById(notification.getReferenceId());
             if (postMaybe.isPresent() && postMaybe.get().getRecipe() != null) {
+                postId = postMaybe.get().getId();
                 recipeId = postMaybe.get().getRecipe().getId();
                 referenceTitle = postMaybe.get().getRecipe().getTitle();
             }
@@ -87,6 +89,10 @@ public class NotificationController {
             if (recipeMaybe.isPresent()) {
                 recipeId = recipeMaybe.get().getId();
                 referenceTitle = recipeMaybe.get().getTitle();
+                Optional<Post> postMaybe = postRepository.findByRecipeId(recipeId);
+                if (postMaybe.isPresent()) {
+                    postId = postMaybe.get().getId();
+                }
             }
         }
 
@@ -95,6 +101,7 @@ public class NotificationController {
             notification.getActor().getUsername(),
             notification.getType().name(),
             notification.getReferenceId(),
+            postId,
             recipeId,
             referenceTitle,
             notification.isRead(),

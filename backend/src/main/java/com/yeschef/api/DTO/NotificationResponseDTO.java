@@ -7,6 +7,7 @@ public record NotificationResponseDTO(
     String actorUsername,
     String type,
     Long referenceId,
+    Long postId,
     Long recipeId,
     String referenceTitle,
     boolean isRead,

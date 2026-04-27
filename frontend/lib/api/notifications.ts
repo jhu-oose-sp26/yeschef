@@ -8,6 +8,7 @@ export interface NotificationResponse {
   actorUsername: string;
   type: NotificationType;
   referenceId: number | null;
+  postId: number | null;
   recipeId: number | null;
   referenceTitle: string | null;
   isRead: boolean;
