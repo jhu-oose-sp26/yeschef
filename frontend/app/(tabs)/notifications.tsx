@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import {
   getNotifications,
@@ -203,9 +203,7 @@ export default function NotificationsScreen() {
     }
   }, [authUser]);
 
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  useFocusEffect(useCallback(() => { loadNotifications(); }, [loadNotifications]));
 
   const newNotifications = useMemo(
     () => notifications.filter((notification) => notification.isNew),
