@@ -67,7 +67,7 @@ export default function HomeScreen() {
       <View style={styles.hero}>
         <View style={styles.topBar}>
           <View style={{ flex: 1 }} />
-          <Pressable style={styles.bellBtn} onPress={() => {}}>
+          <Pressable style={styles.bellBtn} onPress={() => router.navigate('/(tabs)/notifications')}>
             <IconSymbol name="bell.fill" size={20} color={GREEN} />
           </Pressable>
           <Pressable style={styles.avatar} onPress={() => router.navigate('/(tabs)/profile')}>
