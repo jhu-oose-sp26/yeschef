@@ -36,3 +36,7 @@ export function authUrl(path = '') {
 export function postsUrl(path = '') {
   return `${API_BASE_URL}/posts${path}`;
 }
+
+export function notificationsUrl(path = '') {
+  return `${API_BASE_URL}/notifications${path}`;
+}

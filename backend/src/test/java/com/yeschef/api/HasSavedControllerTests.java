@@ -46,6 +46,7 @@ import com.yeschef.api.repository.HasSavedRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
+import com.yeschef.api.service.NotificationService;
 
 @WebMvcTest(controllers = HasSavedController.class)
 @Import(HasSavedControllerTests.TestSecurityConfig.class)
@@ -81,9 +82,12 @@ class HasSavedControllerTests {
     @MockitoBean
     private AuthenticatedUserService authenticatedUserService;
 
+    @MockitoBean
+    private NotificationService notificationService;
+
     @BeforeEach
     void resetMocks() {
-        reset(hasSavedRepository, userRepository, recipeRepository, authenticatedUserService);
+        reset(hasSavedRepository, userRepository, recipeRepository, authenticatedUserService, notificationService);
     }
 
     @Test

@@ -29,6 +29,7 @@ import com.yeschef.api.controller.PostController;
 import com.yeschef.api.model.*;
 import com.yeschef.api.repository.*;
 import com.yeschef.api.DTO.*;
+import com.yeschef.api.service.SupabaseStorageService;
 
 @WebMvcTest(controllers = PostController.class)
 @Import(PostControllerTests.TestSecurityConfig.class)
@@ -63,9 +64,12 @@ class PostControllerTests {
     @MockitoBean
     private UserRepository userRepository;
 
+    @MockitoBean
+    private SupabaseStorageService storageService;
+
     @BeforeEach
     void resetMocks() {
-        reset(postRepository, recipeRepository, sourceRepository, userRepository);
+        reset(postRepository, recipeRepository, sourceRepository, userRepository, storageService);
     }
 
     private Recipe buildRecipe(Long id, String title) {
