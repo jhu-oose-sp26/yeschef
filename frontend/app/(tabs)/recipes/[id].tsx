@@ -54,7 +54,23 @@ function RatingDots({ value, size = 14 }: { value: number; size?: number }) {
 }
 
 export default function RecipeDetailScreen() {
-  const { id, from, userId: fromUserId, filterType, filterValue } = useLocalSearchParams<{ id: string; from?: string; userId?: string; filterType?: string; filterValue?: string }>();
+  const {
+    id,
+    from,
+    userId: fromUserId,
+    filterType,
+    filterValue,
+    filterLabel,
+    query,
+  } = useLocalSearchParams<{
+    id: string;
+    from?: string;
+    userId?: string;
+    filterType?: string;
+    filterValue?: string;
+    filterLabel?: string;
+    query?: string;
+  }>();
   const { user: authUser } = useAuth();
   const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -123,8 +139,23 @@ export default function RecipeDetailScreen() {
 
   const handleBack = () => {
     if (from === 'create') router.navigate('/');
-    else if (from === 'filter-results') router.navigate(`/search/filter-results?type=${filterType ?? ''}&value=${filterValue ?? ''}`);
+    else if (from === 'filter-results') {
+      router.navigate({
+        pathname: '/search/filter-results',
+        params: {
+          type: filterType ?? '',
+          value: filterValue ?? '',
+          label: filterLabel ?? '',
+        },
+      });
+    }
     else if (from === 'browse') router.navigate('/browse');
+    else if (from === 'search-results') {
+      router.navigate({
+        pathname: '/search/results',
+        params: { query: query ?? '' },
+      });
+    }
     else if (from === 'search') router.navigate('/search');
     else if (from === 'profile') router.navigate('/(tabs)/profile');
     else if (from === 'my-posts') router.navigate({ pathname: '/(tabs)/profile/my-posts', params: { userId: fromUserId ?? '' } });
