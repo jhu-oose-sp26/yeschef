@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { getFriends, getSavedRecipes, getUserRecipes } from '@/lib/api/users';
-import type { Recipe } from '@/lib/api/recipes';
+import { getFriends, getSavedRecipes } from '@/lib/api/users';
+import { getUserPosts } from '@/lib/api/posts';
+import type { FeedPost } from '@/lib/api/posts';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 const DARK = '#1A1208';
@@ -21,15 +22,6 @@ const GREEN = '#B8D5B8';
 const TAN = '#FFEDE2';
 const RED = '#BC412B';
 const CREAM = '#FFF8F2';
-
-function formatCookLabel(recipe: Recipe) {
-  const prep = recipe.instruction?.prepTime;
-  const cook = recipe.instruction?.cookTime;
-  return {
-    prep: prep != null ? `${prep}m prep` : null,
-    cook: cook != null ? `${cook}m cook` : null,
-  };
-}
 
 function getPossessiveTitle(username?: string | null) {
   if (!username) return 'MY KITCHEN';
@@ -41,7 +33,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user: authUser, logout } = useAuth();
 
-  const [createdRecipes, setCreatedRecipes] = useState<Recipe[]>([]);
+  const [recentPosts, setRecentPosts] = useState<FeedPost[]>([]);
   const [savedCount, setSavedCount] = useState(0);
   const [friendsCount, setFriendsCount] = useState(0);
   const [postsCount, setPostsCount] = useState(0);
@@ -53,15 +45,15 @@ export default function ProfileScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [saved, created, friends] = await Promise.all([
+      const [saved, posts, friends] = await Promise.all([
         getSavedRecipes(authUser.id),
-        getUserRecipes(authUser.id),
+        getUserPosts(authUser.id),
         getFriends(authUser.id).catch(() => [] as string[]),
       ]);
       setSavedCount(saved.length);
       setFriendsCount(friends.length);
-      setPostsCount(created.length);
-      setCreatedRecipes(created);
+      setPostsCount(posts.length);
+      setRecentPosts(posts.slice(0, 6));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load profile');
     } finally {
@@ -70,8 +62,6 @@ export default function ProfileScreen() {
   }, [authUser]);
 
   useFocusEffect(useCallback(() => { loadProfile(); }, [loadProfile]));
-
-  const recentRecipe = useMemo(() => createdRecipes[0] ?? null, [createdRecipes]);
 
   if (loading) {
     return (
@@ -95,7 +85,6 @@ export default function ProfileScreen() {
   const initial = authUser?.username?.[0]?.toUpperCase() ?? '?';
   const userId = authUser?.id;
   const heroLabel = getPossessiveTitle(authUser?.username);
-  const timeLabels = recentRecipe ? formatCookLabel(recentRecipe) : null;
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -135,38 +124,46 @@ export default function ProfileScreen() {
 
       <View style={styles.body}>
         <Text style={styles.eyebrowRed}>RECENT ACTIVITY</Text>
-        {recentRecipe ? (
-          <Pressable
-            style={({ pressed }) => [styles.recentCard, pressed && styles.pressed]}
-            onPress={() =>
-              router.push({
-                pathname: '/recipes/[id]',
-                params: { id: String(recentRecipe.id), from: 'profile' },
-              })
-            }>
-            <View style={styles.recentTextWrap}>
-              <Text style={styles.recentTitle} numberOfLines={2}>
-                {recentRecipe.title}
-              </Text>
-              <View style={styles.pillRow}>
-                {timeLabels?.prep ? (
-                  <View style={[styles.timePill, styles.prepPill]}>
-                    <Text style={styles.prepPillText}>{timeLabels.prep}</Text>
-                  </View>
-                ) : null}
-                {timeLabels?.cook ? (
-                  <View style={[styles.timePill, styles.cookPill]}>
-                    <Text style={styles.cookPillText}>{timeLabels.cook}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-            <View style={styles.circleArrow}>
-              <MaterialIcons name="chevron-right" size={22} color={CREAM} />
-            </View>
-          </Pressable>
-        ) : (
+
+        {recentPosts.length === 0 ? (
           <Text style={styles.emptyNote}>No recent activity yet.</Text>
+        ) : (
+          <View style={styles.postsGrid}>
+            {recentPosts.map((item) => {
+              const prep = item.recipe.instruction?.prepTime;
+              const cook = item.recipe.instruction?.cookTime;
+              return (
+                <Pressable
+                  key={item.postId}
+                  style={({ pressed }) => [styles.miniCard, pressed && styles.pressed]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(tabs)/posts/[id]',
+                      params: { id: String(item.postId) },
+                    })
+                  }>
+                  <View style={styles.miniCardAccent} />
+                  <View style={styles.miniCardBody}>
+                    <Text style={styles.miniCardTitle} numberOfLines={2}>
+                      {item.recipe.title}
+                    </Text>
+                    <View style={styles.miniPillRow}>
+                      {prep != null && (
+                        <View style={[styles.miniPill, styles.prepPill]}>
+                          <Text style={styles.prepPillText}>{prep}m prep</Text>
+                        </View>
+                      )}
+                      {cook != null && (
+                        <View style={[styles.miniPill, styles.cookPill]}>
+                          <Text style={styles.cookPillText}>{cook}m cook</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         )}
 
         <Text style={styles.eyebrowTeal}>MY STUFF</Text>
@@ -371,44 +368,56 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     marginBottom: 14,
   },
-  recentCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(26,18,8,0.08)',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
+  emptyNote: {
+    color: 'rgba(26,18,8,0.58)',
+    fontSize: 15,
+    fontStyle: 'italic',
     marginBottom: 28,
   },
-  recentTextWrap: {
-    flex: 1,
-    marginRight: 16,
-  },
-  recentTitle: {
-    color: DARK,
-    fontFamily: 'Fraunces_700Bold_Italic',
-    fontSize: 22,
-    lineHeight: 26,
-    marginBottom: 10,
-  },
-  pillRow: {
+  postsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
+    marginBottom: 28,
   },
-  timePill: {
+  miniCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(26,18,8,0.07)',
+    overflow: 'hidden',
+  },
+  miniCardAccent: {
+    height: 5,
+    backgroundColor: GREEN,
+  },
+  miniCardBody: {
+    padding: 12,
+  },
+  miniCardTitle: {
+    color: DARK,
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 14,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  miniPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  miniPill: {
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   prepPill: {
     backgroundColor: '#FFF0E8',
   },
   prepPillText: {
     color: RED,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
   },
   cookPill: {
@@ -416,22 +425,8 @@ const styles = StyleSheet.create({
   },
   cookPillText: {
     color: TEAL,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
-  },
-  circleArrow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: DARK,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyNote: {
-    color: 'rgba(26,18,8,0.58)',
-    fontSize: 15,
-    fontStyle: 'italic',
-    marginBottom: 28,
   },
   navCard: {
     backgroundColor: '#FFFFFF',
