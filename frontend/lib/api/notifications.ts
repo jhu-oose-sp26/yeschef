@@ -22,6 +22,14 @@ export async function getNotifications(userId: number): Promise<NotificationResp
   return handleResponse<NotificationResponse[]>(res);
 }
 
+export async function getUnreadNotificationCount(userId: number): Promise<number> {
+  const res = await fetch(notificationsUrl(`/user/${userId}/unread-count`), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  const data = await handleResponse<{ count: number }>(res);
+  return data.count;
+}
+
 export async function markAllNotificationsRead(userId: number): Promise<void> {
   const res = await fetch(notificationsUrl(`/user/${userId}/read-all`), {
     method: 'PATCH',

@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getUnreadNotificationCount } from '@/lib/api/notifications';
 import { getFriendsFeed } from '@/lib/api/posts';
 import type { FeedPost } from '@/lib/api/posts';
 import { getFriends } from '@/lib/api/users';
@@ -31,18 +32,21 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadFeed = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
     if (isRefresh) setRefreshing(true); else if (feed.length === 0) setLoading(true);
     setError(null);
     try {
-      const [posts, friends] = await Promise.all([
+      const [posts, friends, count] = await Promise.all([
         getFriendsFeed(user.id),
         getFriends(user.id).catch(() => [] as string[]),
+        getUnreadNotificationCount(user.id).catch(() => 0),
       ]);
       setHasFriends(friends.length > 0);
       setFeed(posts);
+      setUnreadCount(count);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load feed.');
     } finally {
@@ -69,6 +73,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1 }} />
           <Pressable style={styles.bellBtn} onPress={() => router.navigate('/(tabs)/notifications')}>
             <IconSymbol name="bell.fill" size={20} color={GREEN} />
+            {unreadCount > 0 && <View style={styles.bellBadge} />}
           </Pressable>
           <Pressable style={styles.avatar} onPress={() => router.navigate('/(tabs)/profile')}>
             <Text style={styles.avatarText}>{initial}</Text>
@@ -180,6 +185,11 @@ const styles = StyleSheet.create({
   bellBtn: {
     width: 38, height: 38, borderRadius: 19,
     borderWidth: 1.5, borderColor: GREEN, alignItems: 'center', justifyContent: 'center',
+  },
+  bellBadge: {
+    position: 'absolute', top: 0, right: 0,
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: RED, borderWidth: 1.5, borderColor: DARK,
   },
   avatar: {
     width: 38, height: 38, borderRadius: 19,

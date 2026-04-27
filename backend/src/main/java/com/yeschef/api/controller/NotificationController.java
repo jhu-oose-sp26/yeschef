@@ -1,6 +1,7 @@
 package com.yeschef.api.controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
@@ -50,6 +51,13 @@ public class NotificationController {
             .map(this::toDTO)
             .toList();
         return ResponseEntity.ok(notifications);
+    }
+
+    @GetMapping("/user/{userId}/unread-count")
+    public ResponseEntity<Map<String, Long>> getUnreadCount(@PathVariable Long userId) {
+        User currentUser = authenticatedUserService.requireCurrentUser(userId);
+        long count = notificationRepository.countByRecipientAndIsReadFalse(currentUser);
+        return ResponseEntity.ok(Map.of("count", count));
     }
 
     @PatchMapping("/user/{userId}/read-all")

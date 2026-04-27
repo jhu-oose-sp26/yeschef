@@ -1,5 +1,6 @@
 package com.yeschef.api.DTO;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 
 public record NotificationResponseDTO(
@@ -10,6 +11,6 @@ public record NotificationResponseDTO(
     Long postId,
     Long recipeId,
     String referenceTitle,
-    boolean isRead,
+    @JsonProperty("isRead") boolean isRead,
     Instant createdAt
 ) {}
