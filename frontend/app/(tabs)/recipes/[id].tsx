@@ -62,6 +62,7 @@ export default function RecipeDetailScreen() {
     filterType,
     filterValue,
     filterLabel,
+    maxTime,
     query,
   } = useLocalSearchParams<{
     id: string;
@@ -70,6 +71,7 @@ export default function RecipeDetailScreen() {
     filterType?: string;
     filterValue?: string;
     filterLabel?: string;
+    maxTime?: string;
     query?: string;
   }>();
   const { user: authUser } = useAuth();
@@ -159,6 +161,12 @@ export default function RecipeDetailScreen() {
         params: { query: query ?? '' },
       });
     }
+    else if (from === 'search-time') {
+      router.navigate({
+        pathname: '/search/time',
+        params: { maxTime: maxTime ?? '' },
+      });
+    }
     else if (from === 'search') router.navigate('/search');
     else if (from === 'profile') router.navigate('/(tabs)/profile');
     else if (from === 'my-posts') router.navigate({ pathname: '/(tabs)/profile/my-posts', params: { userId: fromUserId ?? '' } });
@@ -179,7 +187,7 @@ export default function RecipeDetailScreen() {
         setIsSaved(true);
         setSaveCount((c) => c + 1);
       }
-    } catch (e) {
+    } catch {
       // silently ignore
     } finally {
       setSavingToggle(false);
