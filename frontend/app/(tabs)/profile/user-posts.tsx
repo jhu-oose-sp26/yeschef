@@ -1,24 +1,13 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { getUserRecipes } from '@/lib/api/users';
+import { LoadingErrorView } from '@/components/ui/LoadingErrorView';
+import { Colors } from '@/constants/colors';
+import { getUserPosts } from '@/lib/api/posts';
+import type { FeedPost } from '@/lib/api/posts';
 import type { Recipe } from '@/lib/api/recipes';
-import { getPostByRecipeId } from '@/lib/api/posts';
-
-const DARK = '#1A1208';
-const GREEN = '#B8D5B8';
-const TEAL = '#05A8AA';
-const RED = '#BC412B';
-const CREAM = '#F8F1E5';
 
 function getPossessiveKitchenLabel(username?: string | null) {
   if (!username) return 'KITCHEN';
@@ -48,20 +37,19 @@ export default function UserPostsScreen() {
     from?: string;
   }>();
 
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [navigating, setNavigating] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getUserRecipes(Number(userId));
-      setRecipes(data);
+      const data = await getUserPosts(Number(userId));
+      setPosts(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load recipes');
+      setError(e instanceof Error ? e.message : 'Failed to load posts');
     } finally {
       setLoading(false);
     }
@@ -73,22 +61,6 @@ export default function UserPostsScreen() {
 
   const heroLabel = useMemo(() => getPossessiveKitchenLabel(username), [username]);
   const heroTitle = useMemo(() => getPostsTitle(username), [username]);
-
-  const handleCardPress = async (recipe: Recipe) => {
-    setNavigating(recipe.id);
-    try {
-      const post = await getPostByRecipeId(recipe.id);
-      if (post) {
-        router.push({ pathname: '/posts/[id]', params: { id: String(post.id) } });
-      } else {
-        router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'user-posts', userId, username } });
-      }
-    } catch {
-      router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'user-posts', userId, username } });
-    } finally {
-      setNavigating(null);
-    }
-  };
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -107,7 +79,7 @@ export default function UserPostsScreen() {
     <View style={styles.screen}>
       <View style={styles.hero}>
         <Pressable style={styles.backPill} onPress={handleBack}>
-          <MaterialIcons name="chevron-left" size={18} color={DARK} />
+          <MaterialIcons name="chevron-left" size={18} color={Colors.dark} />
           <Text style={styles.backPillText}>{backLabel}</Text>
         </Pressable>
 
@@ -116,78 +88,66 @@ export default function UserPostsScreen() {
       </View>
 
       <View style={styles.body}>
-        {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={RED} />
-          </View>
-        ) : error ? (
-          <View style={styles.centered}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retryBtn} onPress={load}>
-              <Text style={styles.retryBtnText}>Retry</Text>
-            </Pressable>
-          </View>
-        ) : recipes.length === 0 ? (
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>
-              @{username ?? 'user'} has not posted any recipes yet.
-            </Text>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.list}>
-            <Text style={styles.sectionLabel}>
-              {recipes.length} POST{recipes.length === 1 ? '' : 'S'}
-            </Text>
+        <LoadingErrorView loading={loading} error={error} onRetry={load}>
+          {posts.length === 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>
+                @{username ?? 'user'} has not posted any recipes yet.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.list}>
+              <Text style={styles.sectionLabel}>
+                {posts.length} POST{posts.length === 1 ? '' : 'S'}
+              </Text>
 
-            {recipes.map((recipe) => {
-              const prep = recipe.instruction?.prepTime;
-              const cook = recipe.instruction?.cookTime;
-              return (
-                <Pressable
-                  key={recipe.id}
-                  style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                  disabled={navigating === recipe.id}
-                  onPress={() => handleCardPress(recipe)}>
-                  <View style={styles.cardTopAccent} />
-                  <View style={styles.cardMain}>
-                    <View style={styles.cardTextWrap}>
-                      <Text style={styles.cardTitle} numberOfLines={2}>
-                        {recipe.title}
-                      </Text>
-                      <Text style={styles.cardHandle}>@{username ?? 'user'}</Text>
+              {posts.map((post) => {
+                const prep = post.recipe.instruction?.prepTime;
+                const cook = post.recipe.instruction?.cookTime;
+                const excerpt = post.notes?.trim() || buildExcerpt(post.recipe);
 
-                      <View style={styles.pillRow}>
-                        {prep != null ? (
-                          <View style={[styles.timePill, styles.prepPill]}>
-                            <Text style={styles.prepPillText}>{prep}m prep</Text>
-                          </View>
-                        ) : null}
-                        {cook != null ? (
-                          <View style={[styles.timePill, styles.cookPill]}>
-                            <Text style={styles.cookPillText}>{cook}m cook</Text>
-                          </View>
-                        ) : null}
+                return (
+                  <Pressable
+                    key={post.postId}
+                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                    onPress={() => router.push({ pathname: '/posts/[id]', params: { id: String(post.postId) } })}>
+                    <View style={styles.cardTopAccent} />
+                    <View style={styles.cardMain}>
+                      <View style={styles.cardTextWrap}>
+                        <Text style={styles.cardTitle} numberOfLines={2}>
+                          {post.recipe.title}
+                        </Text>
+                        <Text style={styles.cardHandle}>@{username ?? 'user'}</Text>
+
+                        <View style={styles.pillRow}>
+                          {prep != null ? (
+                            <View style={[styles.timePill, styles.prepPill]}>
+                              <Text style={styles.prepPillText}>{prep}m prep</Text>
+                            </View>
+                          ) : null}
+                          {cook != null ? (
+                            <View style={[styles.timePill, styles.cookPill]}>
+                              <Text style={styles.cookPillText}>{cook}m cook</Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <Text style={styles.cardExcerpt}>{excerpt}</Text>
                       </View>
-
-                      <Text style={styles.cardExcerpt}>{buildExcerpt(recipe)}</Text>
                     </View>
-                  </View>
 
-                  <View style={styles.cardFooter}>
-                    <Text style={styles.footerText}>
-                      @{username ?? 'user'} tap to view post
-                    </Text>
-                    <View style={styles.arrowCircle}>
-                      {navigating === recipe.id
-                        ? <ActivityIndicator size="small" color={CREAM} />
-                        : <MaterialIcons name="chevron-right" size={22} color={CREAM} />}
+                    <View style={styles.cardFooter}>
+                      <Text style={styles.footerText}>@{username ?? 'user'} tap to view post</Text>
+                      <View style={styles.arrowCircle}>
+                        <MaterialIcons name="chevron-right" size={22} color={Colors.sand} />
+                      </View>
                     </View>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </LoadingErrorView>
       </View>
     </View>
   );
@@ -196,10 +156,10 @@ export default function UserPostsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.sand,
   },
   hero: {
-    backgroundColor: GREEN,
+    backgroundColor: Colors.green,
     paddingTop: 44,
     paddingHorizontal: 24,
     paddingBottom: 22,
@@ -216,7 +176,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   backPillText: {
-    color: DARK,
+    color: Colors.dark,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1.1,
@@ -229,14 +189,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   heroTitle: {
-    color: DARK,
+    color: Colors.dark,
     fontFamily: 'Fraunces_700Bold_Italic',
     fontSize: 40,
     lineHeight: 42,
   },
   body: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.sand,
   },
   list: {
     paddingHorizontal: 18,
@@ -244,7 +204,7 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   sectionLabel: {
-    color: RED,
+    color: Colors.red,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2.8,
@@ -261,7 +221,7 @@ const styles = StyleSheet.create({
   },
   cardTopAccent: {
     height: 6,
-    backgroundColor: GREEN,
+    backgroundColor: Colors.green,
   },
   cardMain: {
     paddingHorizontal: 18,
@@ -272,14 +232,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitle: {
-    color: DARK,
+    color: Colors.dark,
     fontFamily: 'Fraunces_700Bold_Italic',
     fontSize: 18,
     lineHeight: 24,
     marginBottom: 4,
   },
   cardHandle: {
-    color: TEAL,
+    color: Colors.teal,
     fontSize: 13,
     fontWeight: '800',
     marginBottom: 10,
@@ -299,7 +259,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF0E8',
   },
   prepPillText: {
-    color: RED,
+    color: Colors.red,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -307,7 +267,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D8F0EF',
   },
   cookPillText: {
-    color: TEAL,
+    color: Colors.teal,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -335,7 +295,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: DARK,
+    backgroundColor: Colors.dark,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 10,
@@ -351,22 +311,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     fontStyle: 'italic',
-  },
-  errorText: {
-    color: RED,
-    textAlign: 'center',
-    marginBottom: 14,
-    fontWeight: '700',
-  },
-  retryBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: RED,
-  },
-  retryBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   pressed: {
     opacity: 0.84,

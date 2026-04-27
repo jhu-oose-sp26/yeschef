@@ -7,7 +7,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import RecipeCard from '@/components/RecipeCard';
 
 import type { Recipe } from '@/lib/api/types';
-import { getRecipes, getRecipesByIngredient, getRecipesByTime } from '@/lib/api/recipes'; // adjust if needed
+import { getRecipesByIngredient, getRecipesByTime } from '@/lib/api/recipes';
 
 export default function BrowseResultsScreen() {
   const { type, value } = useLocalSearchParams<{

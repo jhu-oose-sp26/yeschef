@@ -1,24 +1,14 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { LoadingErrorView } from '@/components/ui/LoadingErrorView';
+import { Colors } from '@/constants/colors';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
 import { getSavedRecipes } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
-
-const DARK = '#1A1208';
-const TEAL = '#05A8AA';
-const RED = '#BC412B';
-const CREAM = '#F8F1E5';
 
 function getCookbookLabel(username?: string | null, isOwnProfile?: boolean) {
   if (isOwnProfile) return 'MY COOKBOOK';
@@ -89,7 +79,7 @@ export default function MySavedScreen() {
     <View style={styles.screen}>
       <View style={styles.hero}>
         <Pressable style={styles.backPill} onPress={handleBack}>
-          <MaterialIcons name="chevron-left" size={18} color={CREAM} />
+          <MaterialIcons name="chevron-left" size={18} color={Colors.sand} />
           <Text style={styles.backPillText}>PROFILE</Text>
         </Pressable>
 
@@ -98,84 +88,75 @@ export default function MySavedScreen() {
       </View>
 
       <View style={styles.body}>
-        {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={RED} />
-          </View>
-        ) : error ? (
-          <View style={styles.centered}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retryBtn} onPress={load}>
-              <Text style={styles.retryBtnText}>Retry</Text>
-            </Pressable>
-          </View>
-        ) : recipes.length === 0 ? (
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>
-              {isOwnProfile ? 'No saved recipes yet.' : `@${username ?? 'user'} has no saved recipes yet.`}
-            </Text>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.list}>
-            <Text style={styles.sectionLabel}>
-              {recipes.length} SAVED RECIPE{recipes.length === 1 ? '' : 'S'}
-            </Text>
+        <LoadingErrorView loading={loading} error={error} onRetry={load}>
+          {recipes.length === 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>
+                {isOwnProfile ? 'No saved recipes yet.' : `@${username ?? 'user'} has no saved recipes yet.`}
+              </Text>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.list}>
+              <Text style={styles.sectionLabel}>
+                {recipes.length} SAVED RECIPE{recipes.length === 1 ? '' : 'S'}
+              </Text>
 
-            {recipes.map((recipe, index) => {
-              const prep = recipe.instruction?.prepTime;
-              const cook = recipe.instruction?.cookTime;
-              const creator = recipe.creatorUsername ? `@${recipe.creatorUsername}` : null;
-              return (
-                <Pressable
-                  key={recipe.id}
-                  style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/recipes/[id]',
-                      params: {
-                        id: String(recipe.id),
-                        from: 'my-saved',
-                        userId,
-                        username: username ?? '',
-                      },
-                    })
-                  }>
-                  <View style={styles.rankWrap}>
-                    <Text style={styles.rankText}>{String(index + 1).padStart(2, '0')}</Text>
-                  </View>
-
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {recipe.title}
-                    </Text>
-                    <Text style={styles.cardMeta}>
-                      {recipe.ingredients?.length ?? 0} ingredient
-                      {(recipe.ingredients?.length ?? 0) === 1 ? '' : 's'}
-                      {creator ? ` · ${creator}` : ''}
-                    </Text>
-
-                    <View style={styles.pillRow}>
-                      {prep != null ? (
-                        <View style={[styles.timePill, styles.prepPill]}>
-                          <Text style={styles.prepPillText}>{prep}m prep</Text>
-                        </View>
-                      ) : null}
-                      {cook != null ? (
-                        <View style={[styles.timePill, styles.cookPill]}>
-                          <Text style={styles.cookPillText}>{cook}m cook</Text>
-                        </View>
-                      ) : null}
+              {recipes.map((recipe, index) => {
+                const prep = recipe.instruction?.prepTime;
+                const cook = recipe.instruction?.cookTime;
+                const creator = recipe.creatorUsername ? `@${recipe.creatorUsername}` : null;
+                return (
+                  <Pressable
+                    key={recipe.id}
+                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/recipes/[id]',
+                        params: {
+                          id: String(recipe.id),
+                          from: 'my-saved',
+                          userId,
+                          username: username ?? '',
+                        },
+                      })
+                    }>
+                    <View style={styles.rankWrap}>
+                      <Text style={styles.rankText}>{String(index + 1).padStart(2, '0')}</Text>
                     </View>
-                  </View>
 
-                  <View style={styles.arrowCircle}>
-                    <MaterialIcons name="chevron-right" size={22} color={CREAM} />
-                  </View>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle} numberOfLines={2}>
+                        {recipe.title}
+                      </Text>
+                      <Text style={styles.cardMeta}>
+                        {recipe.ingredients?.length ?? 0} ingredient
+                        {(recipe.ingredients?.length ?? 0) === 1 ? '' : 's'}
+                        {creator ? ` · ${creator}` : ''}
+                      </Text>
+
+                      <View style={styles.pillRow}>
+                        {prep != null ? (
+                          <View style={[styles.timePill, styles.prepPill]}>
+                            <Text style={styles.prepPillText}>{prep}m prep</Text>
+                          </View>
+                        ) : null}
+                        {cook != null ? (
+                          <View style={[styles.timePill, styles.cookPill]}>
+                            <Text style={styles.cookPillText}>{cook}m cook</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    <View style={styles.arrowCircle}>
+                      <MaterialIcons name="chevron-right" size={22} color={Colors.sand} />
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </LoadingErrorView>
       </View>
     </View>
   );
@@ -184,10 +165,10 @@ export default function MySavedScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.sand,
   },
   hero: {
-    backgroundColor: RED,
+    backgroundColor: Colors.red,
     paddingTop: 44,
     paddingHorizontal: 24,
     paddingBottom: 22,
@@ -204,7 +185,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   backPillText: {
-    color: CREAM,
+    color: Colors.sand,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1.1,
@@ -217,14 +198,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   heroTitle: {
-    color: CREAM,
+    color: Colors.sand,
     fontFamily: 'Fraunces_700Bold_Italic',
     fontSize: 40,
     lineHeight: 42,
   },
   body: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.sand,
   },
   list: {
     paddingHorizontal: 18,
@@ -232,7 +213,7 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   sectionLabel: {
-    color: RED,
+    color: Colors.red,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2.8,
@@ -266,7 +247,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardTitle: {
-    color: DARK,
+    color: Colors.dark,
     fontFamily: 'Fraunces_700Bold_Italic',
     fontSize: 18,
     lineHeight: 24,
@@ -292,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF0E8',
   },
   prepPillText: {
-    color: RED,
+    color: Colors.red,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -300,7 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D8F0EF',
   },
   cookPillText: {
-    color: TEAL,
+    color: Colors.teal,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -308,7 +289,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: DARK,
+    backgroundColor: Colors.dark,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -323,22 +304,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     fontStyle: 'italic',
-  },
-  errorText: {
-    color: RED,
-    textAlign: 'center',
-    marginBottom: 14,
-    fontWeight: '700',
-  },
-  retryBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: RED,
-  },
-  retryBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   pressed: {
     opacity: 0.84,

@@ -66,7 +66,7 @@ export default function ForgotPasswordScreen() {
                   Yes<Text style={styles.brandAccent}>Chef</Text>
                 </Text>
               </View>
-              <Text style={styles.heroSubtitle}>we'll send you a reset link</Text>
+              <Text style={styles.heroSubtitle}>we&apos;ll send you a reset link</Text>
             </View>
 
             <View style={styles.sheet}>

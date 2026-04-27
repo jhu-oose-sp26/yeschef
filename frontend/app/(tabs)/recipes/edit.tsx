@@ -31,7 +31,6 @@ export default function EditRecipeScreen() {
   const { token } = useAuth();
   const numId = Number(id);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [entityBase, setEntityBase] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);

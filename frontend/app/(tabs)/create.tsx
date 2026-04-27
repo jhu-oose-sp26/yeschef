@@ -31,7 +31,7 @@ type IngredientDraft = { ingredient: string; quantity: string };
 type StepDraft = { stepDescription: string };
 
 export default function CreateScreen() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [screen, setScreen] = useState<Screen>('choice');
 
   // ── Option 1: Post about existing recipe ──
