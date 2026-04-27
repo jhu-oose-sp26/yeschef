@@ -1,4 +1,5 @@
 import { authUrl } from '@/constants/api';
+import { authHeaders } from '@/lib/api/client';
 
 export interface AuthRequest {
   email: string;
@@ -73,4 +74,28 @@ export async function resendConfirmation(email: string): Promise<void> {
     body: JSON.stringify({ email }),
   });
   await handleResponse<void>(res);
+}
+
+/** POST /auth/forgot-password — sends a Supabase password reset email. */
+export async function forgotPassword(email: string): Promise<void> {
+  const res = await fetch(authUrl('/forgot-password'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  await handleResponse<{ message: string }>(res);
+}
+
+/** PUT /auth/update-password — updates the user's password via Supabase.
+ *  tokenOverride: pass the recovery token from the deep-link URL hash; omit to use the stored session token. */
+export async function updatePassword(newPassword: string, tokenOverride?: string): Promise<void> {
+  const authHeader = tokenOverride
+    ? { Authorization: `Bearer ${tokenOverride}` }
+    : authHeaders();
+  const res = await fetch(authUrl('/update-password'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeader },
+    body: JSON.stringify({ newPassword }),
+  });
+  await handleResponse<{ message: string }>(res);
 }
