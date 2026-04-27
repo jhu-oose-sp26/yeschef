@@ -24,7 +24,11 @@ function AppShell() {
   useEffect(() => {
     if (isLoading) return;
 
-    const onAuthScreen = segments[0] === 'login' || segments[0] === 'signup';
+    const onAuthScreen =
+      segments[0] === 'login' ||
+      segments[0] === 'signup' ||
+      segments[0] === 'forgot-password' ||
+      segments[0] === 'update-password';
 
     if (!user && !onAuthScreen) {
       router.replace('/login');
@@ -47,6 +51,8 @@ function AppShell() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="update-password" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
