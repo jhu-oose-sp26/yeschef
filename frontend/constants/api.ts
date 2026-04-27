@@ -36,3 +36,7 @@ export function authUrl(path = '') {
 export function postsUrl(path = '') {
   return `${API_BASE_URL}/posts${path}`;
 }
+
+export function commentsUrl(path = '') {
+  return `${API_BASE_URL}/comments${path}`;
+}

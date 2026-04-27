@@ -2,10 +2,13 @@ import { Platform } from 'react-native';
 import { postsUrl } from '@/constants/api';
 import { authHeaders, handleResponse } from './client';
 import type { RecipeCreateRequest } from './types';
+import type { Recipe } from './recipes';
+import { getFriendsRecipes } from './users';
 
 export interface PostResponse {
   id: number;
   image: string | null;
+  notes: string | null;
   recipe: {
     id: number;
     title: string;
@@ -15,9 +18,63 @@ export interface PostResponse {
   };
 }
 
+export interface FeedPost {
+  postId: number;
+  image: string | null;
+  notes: string | null;
+  recipe: Recipe;
+}
+
 export interface PostCreateRequest {
   image?: string;
+  notes?: string;
   recipe: RecipeCreateRequest;
+}
+
+export async function getPostById(postId: number): Promise<PostResponse | null> {
+  const res = await fetch(postsUrl(`/${postId}`), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  if (res.status === 404) return null;
+  return handleResponse<PostResponse>(res);
+}
+
+export async function getAllPosts(): Promise<PostResponse[]> {
+  const res = await fetch(postsUrl(), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  return handleResponse<PostResponse[]>(res);
+}
+
+/**
+ * Fetch posts for a user's friends.
+ * Fetches all posts + friends' recipes in parallel (2 requests),
+ * then joins by recipe.id so only actual posts are returned.
+ */
+export async function getFriendsFeed(userId: number): Promise<FeedPost[]> {
+  const [allPosts, friendRecipes] = await Promise.all([
+    getAllPosts(),
+    getFriendsRecipes(userId),
+  ]);
+  const recipeMap = new Map(friendRecipes.map((r) => [r.id, r]));
+  return allPosts
+    .filter((post) => recipeMap.has(post.recipe.id))
+    .map((post) => ({
+      postId: post.id,
+      image: post.image,
+      notes: post.notes ?? null,
+      recipe: recipeMap.get(post.recipe.id)!,
+    }));
+}
+
+export async function deletePost(postId: number): Promise<void> {
+  const res = await fetch(postsUrl(`/${postId}`), {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Delete post failed: ${res.status}`);
+  }
 }
 
 export async function getPostByRecipeId(recipeId: number): Promise<PostResponse | null> {
