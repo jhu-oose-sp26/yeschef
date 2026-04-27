@@ -1,9 +1,9 @@
 import { Platform } from 'react-native';
 import { postsUrl } from '@/constants/api';
 import { authHeaders, handleResponse } from './client';
-import type { RecipeCreateRequest } from './types';
+import type { RecipeCreateRequest, RecipeDtoResponse } from './types';
+import { normalizeRecipe } from './recipes';
 import type { Recipe } from './recipes';
-import { getFriendsRecipes } from './users';
 
 export interface PostResponse {
   id: number;
@@ -47,24 +47,20 @@ export async function getAllPosts(): Promise<PostResponse[]> {
 }
 
 /**
- * Fetch posts for a user's friends.
- * Fetches all posts + friends' recipes in parallel (2 requests),
- * then joins by recipe.id so only actual posts are returned.
+ * Fetch posts for a user's friends from a single server-side endpoint.
+ * Replaces the previous 2-request pattern (all posts + friends' recipes).
  */
 export async function getFriendsFeed(userId: number): Promise<FeedPost[]> {
-  const [allPosts, friendRecipes] = await Promise.all([
-    getAllPosts(),
-    getFriendsRecipes(userId),
-  ]);
-  const recipeMap = new Map(friendRecipes.map((r) => [r.id, r]));
-  return allPosts
-    .filter((post) => recipeMap.has(post.recipe.id))
-    .map((post) => ({
-      postId: post.id,
-      image: post.image,
-      notes: post.notes ?? null,
-      recipe: recipeMap.get(post.recipe.id)!,
-    }));
+  const res = await fetch(postsUrl(`/friends/${userId}`), {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  const posts = await handleResponse<Array<{ id: number; image: string | null; notes: string | null; recipe: RecipeDtoResponse }>>(res);
+  return posts.map((post) => ({
+    postId: post.id,
+    image: post.image,
+    notes: post.notes ?? null,
+    recipe: normalizeRecipe(post.recipe),
+  }));
 }
 
 export async function deletePost(postId: number): Promise<void> {

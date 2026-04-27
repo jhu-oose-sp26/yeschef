@@ -5,7 +5,13 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "comments")
+@Table(
+    name = "comments",
+    indexes = {
+        @Index(name = "idx_comments_user_id", columnList = "user_id"),
+        @Index(name = "idx_comments_post_id", columnList = "post_id")
+    }
+)
 public class Comment {
 
     @Id

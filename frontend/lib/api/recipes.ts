@@ -21,7 +21,7 @@ function normalizeSource(source: RecipeSource | string | undefined): RecipeSourc
   return source;
 }
 
-function normalizeRecipe(recipe: RawRecipe): Recipe {
+export function normalizeRecipe(recipe: RawRecipe): Recipe {
   if ('instruction' in recipe || (recipe.source && typeof recipe.source !== 'string')) {
     return {
       ...recipe,
