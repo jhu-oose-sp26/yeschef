@@ -1,27 +1,27 @@
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Fonts } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useThemeColor } from '@/hooks/use-theme-color';
+
+const DARK = '#1A1208';
+const GREEN = '#B8D5B8';
+const CREAM = '#FFF8F2';
+const RED = '#BC412B';
 
 export default function SignupScreen() {
   const { signup, resendConfirmation } = useAuth();
-  const accent = useThemeColor({}, 'accent');
-  const cardBg = useThemeColor({}, 'card');
-  const cardBorder = useThemeColor({}, 'cardBorder');
-  const textColor = useThemeColor({}, 'text');
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -41,10 +41,16 @@ export default function SignupScreen() {
       setError('Password must be at least 8 characters.');
       return;
     }
-    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) {
+    if (
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[^a-zA-Z0-9]/.test(password)
+    ) {
       setError('Password must contain uppercase, lowercase, a number, and a symbol.');
       return;
     }
+
     setError(null);
     setLoading(true);
     try {
@@ -64,7 +70,7 @@ export default function SignupScreen() {
       await resendConfirmation(email.trim());
       setResendSent(true);
     } catch {
-      // silently ignore — user can try again
+      // silently ignore
     } finally {
       setResendLoading(false);
     }
@@ -72,222 +78,395 @@ export default function SignupScreen() {
 
   if (confirming) {
     return (
-      <ThemedView style={styles.root}>
-        <View style={styles.inner}>
-          <View style={styles.header}>
-            <ThemedText type="title" style={[styles.title, { fontFamily: Fonts.rounded }]}>
-              YesChef
-            </ThemedText>
-          </View>
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <ThemedText type="defaultSemiBold" style={{ fontSize: 16, marginBottom: 8 }}>
-              Check your email
-            </ThemedText>
-            <ThemedText style={{ opacity: 0.7, lineHeight: 20 }}>
-              We sent a confirmation link to <ThemedText type="defaultSemiBold">{email}</ThemedText>.
-              {'\n\n'}Once confirmed, come back and sign in.
-            </ThemedText>
-            <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                { backgroundColor: accent, opacity: pressed || resendLoading ? 0.75 : 1 },
-              ]}
-              onPress={handleResend}
-              disabled={resendLoading}>
-              {resendLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText style={styles.buttonText}>
-                  {resendSent ? 'Email sent!' : 'Resend confirmation email'}
-                </ThemedText>
-              )}
-            </Pressable>
-          </View>
-          <View style={styles.footer}>
-            <Link href="/login" asChild>
-              <Pressable>
-                <ThemedText style={[styles.footerLink, { color: accent }]}>
-                  Go to sign in
-                </ThemedText>
+      <View style={styles.screen}>
+        <View style={styles.centerWrap}>
+          <Text style={styles.screenLabel}>SIGN UP</Text>
+
+          <View style={styles.panel}>
+            <View style={styles.hero}>
+              <View style={styles.brandRow}>
+                <MaterialCommunityIcons name="chef-hat" size={30} color={GREEN} />
+                <Text style={styles.brandText}>
+                  Yes<Text style={styles.brandAccent}>Chef</Text>
+                </Text>
+              </View>
+              <Text style={styles.heroSubtitle}>share recipes with your people</Text>
+            </View>
+
+            <View style={styles.sheet}>
+              <View style={styles.curveLeft} />
+              <View style={styles.curveRight} />
+
+              <Text style={[styles.eyebrow, { color: GREEN }]}>CHECK YOUR EMAIL</Text>
+              <Text style={styles.confirmTitle}>almost there</Text>
+              <Text style={styles.confirmBody}>
+                We sent a confirmation link to <Text style={styles.confirmStrong}>{email}</Text>.
+                {'\n\n'}Once you confirm it, come back here and log in.
+              </Text>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  styles.primaryButtonGreen,
+                  (pressed || resendLoading) && styles.buttonPressed,
+                ]}
+                onPress={handleResend}
+                disabled={resendLoading}>
+                {resendLoading ? (
+                  <ActivityIndicator color={DARK} />
+                ) : (
+                  <>
+                    <Text style={styles.primaryButtonText}>
+                      {resendSent ? 'EMAIL SENT' : 'RESEND EMAIL'}
+                    </Text>
+                    <View style={[styles.arrowBadge, { backgroundColor: GREEN }]}>
+                      <Text style={[styles.arrowText, { color: DARK }]}>{'>'}</Text>
+                    </View>
+                  </>
+                )}
               </Pressable>
-            </Link>
+
+              <Link href="/login" asChild>
+                <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
+                  <Text style={styles.secondaryButtonText}>GO TO LOG IN</Text>
+                  <View style={[styles.arrowBadge, { backgroundColor: DARK }]}>
+                    <Text style={styles.arrowText}>{'>'}</Text>
+                  </View>
+                </Pressable>
+              </Link>
+            </View>
           </View>
         </View>
-      </ThemedView>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.root}>
+    <View style={styles.screen}>
       <KeyboardAvoidingView
-        style={styles.inner}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <ThemedText type="title" style={[styles.title, { fontFamily: Fonts.rounded }]}>
-            YesChef
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>Create your account</ThemedText>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <Text style={styles.screenLabel}>SIGN UP</Text>
 
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText type="defaultSemiBold" style={styles.label}>
-            Username
-          </ThemedText>
-          <TextInput
-            style={[styles.input, { borderColor: cardBorder, color: textColor }]}
-            placeholder="chefgordon"
-            placeholderTextColor={cardBorder}
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType="username"
-            value={username}
-            onChangeText={setUsername}
-            editable={!loading}
-          />
+          <View style={styles.panel}>
+            <View style={styles.hero}>
+              <View style={styles.brandRow}>
+                <MaterialCommunityIcons name="chef-hat" size={30} color={GREEN} />
+                <Text style={styles.brandText}>
+                  Yes<Text style={styles.brandAccent}>Chef</Text>
+                </Text>
+              </View>
+              <Text style={styles.heroSubtitle}>share recipes with your people</Text>
+            </View>
 
-          <ThemedText type="defaultSemiBold" style={[styles.label, styles.labelSpacing]}>
-            Email
-          </ThemedText>
-          <TextInput
-            style={[styles.input, { borderColor: cardBorder, color: textColor }]}
-            placeholder="you@example.com"
-            placeholderTextColor={cardBorder}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            value={email}
-            onChangeText={setEmail}
-            editable={!loading}
-          />
+            <View style={styles.sheet}>
+              <View style={styles.curveLeft} />
+              <View style={styles.curveRight} />
 
-          <ThemedText type="defaultSemiBold" style={[styles.label, styles.labelSpacing]}>
-            Password
-          </ThemedText>
-          <TextInput
-            style={[styles.input, { borderColor: cardBorder, color: textColor }]}
-            placeholder="••••••••"
-            placeholderTextColor={cardBorder}
-            secureTextEntry
-            textContentType="newPassword"
-            value={password}
-            onChangeText={setPassword}
-            editable={!loading}
-            onSubmitEditing={handleSignup}
-            returnKeyType="go"
-          />
+              <Text style={[styles.eyebrow, { color: GREEN }]}>CREATE YOUR ACCOUNT</Text>
 
-          {error && (
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
-          )}
+              <Text style={styles.fieldLabel}>USERNAME</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="chefjulia"
+                placeholderTextColor="rgba(26,18,8,0.28)"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="username"
+                value={username}
+                onChangeText={setUsername}
+                editable={!loading}
+              />
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              { backgroundColor: accent, opacity: pressed || loading ? 0.75 : 1 },
-            ]}
-            onPress={handleSignup}
-            disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.buttonText}>Create Account</ThemedText>
-            )}
-          </Pressable>
-        </View>
+              <Text style={[styles.fieldLabel, styles.fieldSpacing]}>EMAIL</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor="rgba(26,18,8,0.28)"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                value={email}
+                onChangeText={setEmail}
+                editable={!loading}
+              />
 
-        <View style={styles.footer}>
-          <ThemedText style={styles.footerText}>Already have an account?</ThemedText>
-          <Link href="/login" asChild>
-            <Pressable>
-              <ThemedText style={[styles.footerLink, { color: accent }]}>
-                {' '}Sign in
-              </ThemedText>
-            </Pressable>
-          </Link>
-        </View>
+              <Text style={[styles.fieldLabel, styles.fieldSpacing]}>PASSWORD</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="********"
+                placeholderTextColor="rgba(26,18,8,0.28)"
+                secureTextEntry
+                textContentType="newPassword"
+                value={password}
+                onChangeText={setPassword}
+                editable={!loading}
+                onSubmitEditing={handleSignup}
+                returnKeyType="go"
+              />
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  styles.primaryButtonGreen,
+                  (pressed || loading) && styles.buttonPressed,
+                ]}
+                onPress={handleSignup}
+                disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator color={DARK} />
+                ) : (
+                  <>
+                    <Text style={styles.primaryButtonText}>CREATE ACCOUNT</Text>
+                    <View style={[styles.arrowBadge, { backgroundColor: GREEN }]}>
+                      <Text style={[styles.arrowText, { color: DARK }]}>{'>'}</Text>
+                    </View>
+                  </>
+                )}
+              </Pressable>
+
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <Link href="/login" asChild>
+                <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
+                  <Text style={styles.secondaryButtonText}>LOG IN</Text>
+                  <View style={[styles.arrowBadge, { backgroundColor: DARK }]}>
+                    <Text style={styles.arrowText}>{'>'}</Text>
+                  </View>
+                </Pressable>
+              </Link>
+            </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  flex: {
     flex: 1,
   },
-  inner: {
+  screen: {
+    flex: 1,
+    backgroundColor: CREAM,
+  },
+  centerWrap: {
     flex: 1,
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 28,
   },
-  header: {
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 28,
+  },
+  screenLabel: {
+    color: DARK,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 3,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  panel: {
+    width: '100%',
+    maxWidth: 430,
+    alignSelf: 'center',
+    backgroundColor: CREAM,
+    borderRadius: 40,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#100B05',
+  },
+  hero: {
+    backgroundColor: DARK,
     alignItems: 'center',
-    marginBottom: 32,
+    paddingTop: 72,
+    paddingBottom: 118,
+    paddingHorizontal: 28,
   },
-  title: {
-    fontSize: 36,
-    marginBottom: 6,
+  brandRow: {
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
   },
-  subtitle: {
-    fontSize: 15,
-    opacity: 0.7,
+  brandText: {
+    color: '#FFF8F2',
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 44,
+    lineHeight: 48,
+    textAlign: 'center',
   },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.07,
-        shadowRadius: 10,
-      },
-      android: { elevation: 3 },
-      default: {},
-    }),
+  brandAccent: {
+    color: RED,
   },
-  label: {
-    fontSize: 13,
-    marginBottom: 6,
+  heroSubtitle: {
+    color: 'rgba(255,248,242,0.58)',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  labelSpacing: {
+  sheet: {
+    backgroundColor: CREAM,
+    marginTop: -56,
+    borderTopLeftRadius: 42,
+    borderTopRightRadius: 42,
+    paddingHorizontal: 28,
+    paddingTop: 34,
+    paddingBottom: 30,
+  },
+  curveLeft: {
+    position: 'absolute',
+    left: -8,
+    top: -48,
+    width: 190,
+    height: 110,
+    borderRadius: 999,
+    backgroundColor: CREAM,
+  },
+  curveRight: {
+    position: 'absolute',
+    right: -18,
+    top: -58,
+    width: 220,
+    height: 120,
+    borderRadius: 999,
+    backgroundColor: CREAM,
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2.6,
+    marginBottom: 18,
+  },
+  fieldLabel: {
+    color: DARK,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  fieldSpacing: {
     marginTop: 16,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+    height: 58,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26,18,8,0.12)',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    color: DARK,
+    fontSize: 18,
+    fontWeight: '600',
   },
   errorText: {
-    color: '#c0392b',
+    color: RED,
     fontSize: 13,
+    fontWeight: '700',
     marginTop: 12,
   },
-  button: {
-    marginTop: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  footer: {
+  primaryButton: {
+    marginTop: 22,
+    minHeight: 64,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: 'rgba(26,18,8,0.18)',
+    paddingHorizontal: 22,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
+    gap: 14,
   },
-  footerText: {
-    fontSize: 14,
-    opacity: 0.7,
+  primaryButtonGreen: {
+    backgroundColor: '#EDF8ED',
   },
-  footerLink: {
-    fontSize: 14,
-    fontWeight: '600',
+  primaryButtonText: {
+    color: DARK,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+  },
+  secondaryButton: {
+    minHeight: 64,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: 'rgba(26,18,8,0.18)',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  secondaryButtonText: {
+    color: DARK,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+  },
+  arrowBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowText: {
+    color: '#FFF8F2',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: -1,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(26,18,8,0.12)',
+  },
+  dividerText: {
+    color: 'rgba(26,18,8,0.32)',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  confirmTitle: {
+    color: DARK,
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 34,
+    lineHeight: 38,
+    marginBottom: 12,
+  },
+  confirmBody: {
+    color: 'rgba(26,18,8,0.66)',
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  confirmStrong: {
+    color: DARK,
+    fontWeight: '800',
+  },
+  buttonPressed: {
+    opacity: 0.8,
   },
 });

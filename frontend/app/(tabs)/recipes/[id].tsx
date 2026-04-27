@@ -24,7 +24,7 @@ import {
   updateRating,
 } from '@/lib/api/ratings';
 import type { RatingResponse } from '@/lib/api/ratings';
-import { getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
+import { getFriends, getSavedRecipes, saveRecipe, unsaveRecipe } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 const DARK = '#1A1208';
@@ -63,6 +63,7 @@ export default function RecipeDetailScreen() {
     filterLabel,
     maxTime,
     query,
+    username,
   } = useLocalSearchParams<{
     id: string;
     from?: string;
@@ -72,6 +73,7 @@ export default function RecipeDetailScreen() {
     filterLabel?: string;
     maxTime?: string;
     query?: string;
+    username?: string;
   }>();
   const { user: authUser } = useAuth();
   const router = useRouter();
@@ -87,6 +89,7 @@ export default function RecipeDetailScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [savingToggle, setSavingToggle] = useState(false);
   const [saveCount, setSaveCount] = useState(0);
+  const [canSaveRecipe, setCanSaveRecipe] = useState(true);
 
   const [tasteDraft, setTasteDraft] = useState(0);
   const [easeDraft, setEaseDraft] = useState(0);
@@ -117,9 +120,10 @@ export default function RecipeDetailScreen() {
 
       if (authUser) {
         setCurrentUserId(authUser.id);
-        const [existing, savedList] = await Promise.all([
+        const [existing, savedList, friendUsernames] = await Promise.all([
           getUserRatingForRecipe(authUser.id, numId),
           getSavedRecipes(authUser.id).catch(() => []),
+          getFriends(authUser.id).catch(() => [] as string[]),
         ]);
         if (existing) {
           setMyRating(existing);
@@ -127,6 +131,14 @@ export default function RecipeDetailScreen() {
           setEaseDraft(existing.easeOfExecution);
         }
         setIsSaved(savedList.some((s) => s.recipeId === numId));
+
+        const recipeOwner = data.creatorUsername?.trim();
+        const isOwnRecipe = recipeOwner != null && recipeOwner === authUser.username;
+        const isFriendRecipe = recipeOwner != null && friendUsernames.includes(recipeOwner);
+        const isPublicApiRecipe = data.source?.sourceType !== 'USER';
+        setCanSaveRecipe(isPublicApiRecipe || !recipeOwner || isOwnRecipe || isFriendRecipe);
+      } else {
+        setCanSaveRecipe(false);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load recipe');
@@ -167,12 +179,13 @@ export default function RecipeDetailScreen() {
     else if (from === 'search') router.navigate('/search');
     else if (from === 'profile') router.navigate('/(tabs)/profile');
     else if (from === 'my-posts') router.navigate({ pathname: '/(tabs)/profile/my-posts', params: { userId: fromUserId ?? '' } });
-    else if (from === 'my-saved') router.navigate({ pathname: '/(tabs)/profile/my-saved', params: { userId: fromUserId ?? '' } });
+    else if (from === 'my-saved') router.navigate({ pathname: '/(tabs)/profile/my-saved', params: { userId: fromUserId ?? '', username: username ?? '' } });
+    else if (from === 'user-posts') router.navigate({ pathname: '/(tabs)/profile/user-posts', params: { userId: fromUserId ?? '', username: username ?? '' } });
     else router.back();
   };
 
   const handleToggleSave = async () => {
-    if (!currentUserId) return;
+    if (!currentUserId || !canSaveRecipe) return;
     setSavingToggle(true);
     try {
       if (isSaved) {
@@ -292,7 +305,7 @@ export default function RecipeDetailScreen() {
               )}
             </View>
 
-            {currentUserId != null && (
+            {currentUserId != null && canSaveRecipe && (
               <Pressable
                 onPress={handleToggleSave}
                 disabled={savingToggle}
@@ -306,6 +319,12 @@ export default function RecipeDetailScreen() {
                   </Text>
                 )}
               </Pressable>
+            )}
+
+            {currentUserId != null && !canSaveRecipe && recipe.source?.sourceType === 'USER' && (
+              <Text style={styles.saveRuleText}>
+                You can rate this recipe, but saving is limited to your own and friends&apos; recipes.
+              </Text>
             )}
           </View>
 
@@ -479,6 +498,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.3)',
   },
   saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  saveRuleText: {
+    color: 'rgba(255,248,242,0.68)',
+    fontSize: 13,
+    lineHeight: 18,
+    maxWidth: 240,
+  },
 
   // ── Stats Bar ──
   statsBar: {

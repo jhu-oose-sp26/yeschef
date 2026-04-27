@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { getSavedRecipes } from '@/lib/api/users';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 const TEAL = '#05A8AA';
 const GREEN = '#B8D5B8';
@@ -15,7 +16,8 @@ const RED = '#BC412B';
 
 export default function MySavedScreen() {
   const router = useRouter();
-  const { userId } = useLocalSearchParams<{ userId: string }>();
+  const { user: authUser } = useAuth();
+  const { userId, username } = useLocalSearchParams<{ userId: string; username?: string }>();
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ export default function MySavedScreen() {
     setError(null);
     try {
       const saved = await getSavedRecipes(Number(userId));
-      const ids = saved.map((s) => s.recipeId).filter((id): id is number => id != null);
+      const ids = saved.map((item) => item.recipeId).filter((id): id is number => id != null);
       const data = await Promise.all(ids.map((id) => getRecipe(id)));
       setRecipes(data);
     } catch (e) {
@@ -37,20 +39,36 @@ export default function MySavedScreen() {
     }
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const isOwnProfile = authUser && String(authUser.id) === userId;
+
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else if (isOwnProfile) router.navigate('/(tabs)/profile');
+    else {
+      router.navigate({
+        pathname: '/profile/user-profile',
+        params: {
+          userId,
+          username: username ?? '',
+        },
+      });
+    }
+  };
 
   return (
     <ThemedView style={styles.screen}>
-
-      {/* ── Teal Header ── */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.navigate('/(tabs)/profile')} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backText}>← BACK</Text>
+        <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
+          <Text style={styles.backText}>{'< BACK'}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>My Saved</Text>
+        <Text style={styles.headerTitle}>{isOwnProfile ? 'My Saved' : `@${username ?? 'user'}`}</Text>
+        <Text style={styles.headerSubtitle}>saved recipes</Text>
       </View>
 
-      {/* ── Body ── */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={TEAL} />
@@ -64,7 +82,9 @@ export default function MySavedScreen() {
         </View>
       ) : recipes.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>No saved recipes yet.</Text>
+          <Text style={styles.emptyText}>
+            {isOwnProfile ? 'No saved recipes yet.' : `@${username ?? 'user'} has no saved recipes yet.`}
+          </Text>
         </View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
@@ -72,27 +92,38 @@ export default function MySavedScreen() {
             <View key={recipe.id} style={styles.card}>
               <Pressable
                 style={({ pressed }) => [styles.cardPressable, { opacity: pressed ? 0.85 : 1 }]}
-                onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'my-saved', userId } })}
-              >
+                onPress={() =>
+                  router.push({
+                    pathname: '/recipes/[id]',
+                    params: {
+                      id: String(recipe.id),
+                      from: 'my-saved',
+                      userId,
+                      username: username ?? '',
+                    },
+                  })
+                }>
                 <View style={styles.cardContent}>
                   <Text style={styles.cardTitle} numberOfLines={1}>{recipe.title}</Text>
-                  {recipe.ingredients && recipe.ingredients.length > 0 && (
-                    <Text style={styles.cardSub}>{recipe.ingredients.length} ingredient{recipe.ingredients.length !== 1 ? 's' : ''}</Text>
-                  )}
+                  {recipe.ingredients && recipe.ingredients.length > 0 ? (
+                    <Text style={styles.cardSub}>
+                      {recipe.ingredients.length} ingredient{recipe.ingredients.length !== 1 ? 's' : ''}
+                    </Text>
+                  ) : null}
                   <View style={styles.pillRow}>
-                    {recipe.instruction?.prepTime != null && (
+                    {recipe.instruction?.prepTime != null ? (
                       <View style={styles.pill}>
                         <Text style={styles.pillText}>prep {recipe.instruction.prepTime} min</Text>
                       </View>
-                    )}
-                    {recipe.instruction?.cookTime != null && (
+                    ) : null}
+                    {recipe.instruction?.cookTime != null ? (
                       <View style={styles.pill}>
                         <Text style={styles.pillText}>cook {recipe.instruction.cookTime} min</Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 </View>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={styles.chevron}>{'>'}</Text>
               </Pressable>
             </View>
           ))}
@@ -104,8 +135,6 @@ export default function MySavedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: TAN },
-
-  // ── Header ──
   header: {
     backgroundColor: TEAL,
     paddingTop: 56,
@@ -115,19 +144,14 @@ const styles = StyleSheet.create({
   backBtn: { marginBottom: 10 },
   backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
   headerTitle: { color: '#fff', fontSize: 30, fontWeight: '800' },
-
-  // ── States ──
+  headerSubtitle: { color: '#fff', fontSize: 14, opacity: 0.82, marginTop: 2 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emptyText: { fontSize: 15, color: '#2C1A0E', opacity: 0.6, fontStyle: 'italic' },
+  emptyText: { fontSize: 15, color: '#2C1A0E', opacity: 0.6, fontStyle: 'italic', textAlign: 'center' },
   errorText: { color: '#c00', textAlign: 'center', marginBottom: 12 },
   retryBtn: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10, backgroundColor: RED },
   retryBtnText: { color: '#fff', fontWeight: '600' },
-
-  // ── List ──
   scroll: { flex: 1 },
   list: { padding: 20, paddingBottom: 48 },
-
-  // ── Recipe card ──
   card: {
     backgroundColor: GREEN,
     borderRadius: 14,
