@@ -15,13 +15,14 @@ import { getFriendsFeed } from '@/lib/api/posts';
 import type { FeedPost } from '@/lib/api/posts';
 import { getFriends } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { Colors } from '@/constants/colors';
 
-const DARK = '#1A1208';
-const GREEN = '#B8D5B8';
-const TAN = '#FFEDE2';
-const RED = '#BC412B';
-const TEAL = '#05A8AA';
-const CREAM = '#FFF8F2';
+const DARK = Colors.dark;
+const GREEN = Colors.green;
+const TAN = Colors.tan;
+const RED = Colors.red;
+const TEAL = Colors.teal;
+const CREAM = Colors.cream;
 
 export default function HomeScreen() {
   const { user } = useAuth();
