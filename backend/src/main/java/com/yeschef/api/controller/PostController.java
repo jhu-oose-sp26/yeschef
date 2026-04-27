@@ -34,6 +34,7 @@ import java.util.Map;
 
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 // This controller exposes REST endpoints related to posts
 @RestController
@@ -263,10 +264,24 @@ public class PostController {
 
         recipe.setSource(source);
 
+        List<Recipe.Ingredient> ingredients = dto.getIngredients() == null
+            ? List.of()
+            : dto.getIngredients().stream()
+                .map(i -> new Recipe.Ingredient(i.getIngredient(), i.getQuantity()))
+                .collect(Collectors.toList());
+        recipe.setIngredients(ingredients);
+
         Instruct instruct = new Instruct();
         instruct.setPrepTime(dto.getPrepTime());
         instruct.setCookTime(dto.getCookTime());
         instruct.setRecipe(recipe);
+
+        List<Instruct.InstructionStep> steps = dto.getSteps() == null
+            ? List.of()
+            : dto.getSteps().stream()
+                .map(s -> new Instruct.InstructionStep(s.getStepNumber(), s.getStepDescription()))
+                .collect(Collectors.toList());
+        instruct.setSteps(steps);
 
         recipe.setInstruction(instruct);
 
