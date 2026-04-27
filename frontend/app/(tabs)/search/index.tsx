@@ -1,3 +1,4 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,10 +17,11 @@ import { getRecentIds } from '@/lib/recentRecipes';
 
 const DARK = '#1A1208';
 const TEAL = '#05A8AA';
-const GREEN = '#B8D5B8';
 const TAN = '#FFEDE2';
 const RED = '#BC412B';
 const CREAM = '#FFF8F2';
+const SOFT_TEAL = '#D8F1F2';
+const SOFT_RED = '#F6DDD4';
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -46,46 +48,63 @@ export default function SearchScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>SEARCH</Text>
+        <Text style={styles.heroLabel}>EXPLORE</Text>
+        <Text style={styles.heroTitle}>find a{'\n'}recipe</Text>
         <Pressable
           style={({ pressed }) => [styles.searchBar, pressed && styles.pressed]}
           onPress={() => router.push({ pathname: '/search/results', params: { query: '' } })}
         >
           <IconSymbol name="magnifyingglass" size={16} color="rgba(26,18,8,0.38)" />
-          <Text style={styles.searchPlaceholder}>What&apos;s on the menu...</Text>
+          <Text style={styles.searchPlaceholder}>what&apos;s on the menu.</Text>
         </Pressable>
       </View>
 
       <View style={styles.sheet}>
-        <Text style={styles.sectionTitle}>search by:</Text>
-        <View style={styles.filterGroup}>
+        <Text style={styles.sectionEyebrow}>SEARCH BY</Text>
+        <View style={styles.searchByGroup}>
           <Pressable
-            style={({ pressed }) => [styles.filterCard, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.searchByCard, styles.ingredientCard, pressed && styles.pressed]}
             onPress={() => router.push('/search/ingredient')}
           >
-            <Text style={styles.filterLabel}>ingredient</Text>
-            <Text style={styles.filterSubtext}>Jump through A-Z ingredients with quick letter access.</Text>
+            <View style={[styles.searchByIconWrap, { backgroundColor: '#BFE8EA' }]}>
+              <MaterialIcons name="spa" size={20} color={TEAL} />
+            </View>
+            <View style={styles.searchByTextWrap}>
+              <Text style={styles.searchByTitle}>by ingredient</Text>
+              <Text style={styles.searchBySubtext}>search what you have</Text>
+            </View>
+            <View style={styles.searchByArrow}>
+              <IconSymbol name="chevron.right" size={16} color="#FFF8F2" />
+            </View>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.filterCard, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.searchByCard, styles.timeCard, pressed && styles.pressed]}
             onPress={() => router.push('/search/time')}
           >
-            <Text style={styles.filterLabel}>cook time</Text>
-            <Text style={styles.filterSubtext}>Browse by minute ranges with fast sidebar shortcuts.</Text>
+            <View style={[styles.searchByIconWrap, { backgroundColor: '#F9EAE3' }]}>
+              <MaterialIcons name="schedule" size={20} color={RED} />
+            </View>
+            <View style={styles.searchByTextWrap}>
+              <Text style={styles.searchByTitle}>by cook time</Text>
+              <Text style={styles.searchBySubtext}>filter by how long it takes</Text>
+            </View>
+            <View style={[styles.searchByArrow, { backgroundColor: RED }]}>
+              <IconSymbol name="chevron.right" size={16} color="#FFF8F2" />
+            </View>
           </Pressable>
         </View>
 
-        <Text style={[styles.sectionTitle, styles.recentsHeader]}>recents:</Text>
+        <Text style={[styles.sectionEyebrow, styles.recentsEyebrow]}>RECENTLY VIEWED</Text>
         {loadingRecents ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="small" color={RED} />
           </View>
         ) : recents.length === 0 ? (
-          <View style={styles.emptyRecentCard}>
-            <Text style={styles.emptyRecentText}>recently viewed recipes</Text>
-            <Text style={styles.emptyRecentSubtext}>
-              Open a recipe from search and it will live here for quick access.
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>No recent recipes yet</Text>
+            <Text style={styles.emptyStateText}>
+              Open a recipe from search and it will show up here for quick access.
             </Text>
           </View>
         ) : (
@@ -93,7 +112,7 @@ export default function SearchScreen() {
             {recents.map((recipe) => (
               <Pressable
                 key={recipe.id}
-                style={({ pressed }) => [styles.recipeCard, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.recentCard, pressed && styles.pressed]}
                 onPress={() =>
                   router.push({
                     pathname: '/recipes/[id]',
@@ -101,28 +120,15 @@ export default function SearchScreen() {
                   })
                 }
               >
-                <View style={styles.recipeCardBody}>
-                  <Text style={styles.recipeTitle} numberOfLines={1}>
+                <View style={styles.recentBody}>
+                  <Text style={styles.recentTitle} numberOfLines={1}>
                     {recipe.title}
                   </Text>
-                  <Text style={styles.recipeMeta}>
-                    {recipe.ingredients?.length ?? 0} ingredient
-                    {(recipe.ingredients?.length ?? 0) === 1 ? '' : 's'}
+                  <Text style={styles.recentMeta}>
+                    {recipe.creatorUsername ? `@${recipe.creatorUsername}` : 'recently viewed'}
                   </Text>
-                  <View style={styles.pillRow}>
-                    {recipe.instruction?.prepTime != null && (
-                      <View style={styles.timePill}>
-                        <Text style={styles.timePillText}>prep {recipe.instruction.prepTime} min</Text>
-                      </View>
-                    )}
-                    {recipe.instruction?.cookTime != null && (
-                      <View style={styles.timePill}>
-                        <Text style={styles.timePillText}>cook {recipe.instruction.cookTime} min</Text>
-                      </View>
-                    )}
-                  </View>
                 </View>
-                <IconSymbol name="chevron.right" size={20} color={DARK} />
+                <IconSymbol name="chevron.right" size={18} color="rgba(26,18,8,0.45)" />
               </Pressable>
             ))}
           </View>
@@ -141,139 +147,153 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
   hero: {
-    backgroundColor: TEAL,
+    backgroundColor: DARK,
     paddingTop: 58,
     paddingHorizontal: 24,
-    paddingBottom: 28,
+    paddingBottom: 34,
+  },
+  heroLabel: {
+    color: 'rgba(255,248,242,0.6)',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2.4,
+    marginBottom: 12,
   },
   heroTitle: {
     color: '#FFF8F2',
-    fontSize: 34,
-    fontWeight: '900',
-    letterSpacing: 1,
-    marginBottom: 18,
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 44,
+    lineHeight: 44,
+    marginBottom: 20,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#FFFDF8',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: '#F5FBF4',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   searchPlaceholder: {
-    color: 'rgba(26,18,8,0.4)',
+    color: 'rgba(26,18,8,0.45)',
     fontSize: 15,
     flex: 1,
   },
   sheet: {
-    backgroundColor: TAN,
+    backgroundColor: CREAM,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    marginTop: -6,
+    marginTop: -10,
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 22,
+    paddingBottom: 20,
+    minHeight: 560,
   },
-  sectionTitle: {
-    color: DARK,
-    fontFamily: 'Fraunces_700Bold_Italic',
-    fontSize: 28,
-    marginBottom: 14,
+  sectionEyebrow: {
+    color: RED,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 12,
   },
-  filterGroup: {
+  searchByGroup: {
     gap: 14,
   },
-  filterCard: {
-    backgroundColor: GREEN,
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+  searchByCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  filterLabel: {
+  ingredientCard: {
+    backgroundColor: SOFT_TEAL,
+  },
+  timeCard: {
+    backgroundColor: SOFT_RED,
+  },
+  searchByIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  searchByTextWrap: {
+    flex: 1,
+  },
+  searchByTitle: {
     color: DARK,
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  filterSubtext: {
-    color: 'rgba(26,18,8,0.62)',
-    fontSize: 13,
-    lineHeight: 19,
-    maxWidth: 270,
+  searchBySubtext: {
+    color: 'rgba(26,18,8,0.56)',
+    fontSize: 12,
   },
-  recentsHeader: {
-    marginTop: 28,
+  searchByArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentsEyebrow: {
+    marginTop: 26,
   },
   loadingWrap: {
-    paddingVertical: 12,
+    paddingVertical: 18,
     alignItems: 'center',
   },
-  emptyRecentCard: {
-    backgroundColor: GREEN,
-    borderRadius: 18,
+  emptyState: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(26,18,8,0.08)',
   },
-  emptyRecentText: {
+  emptyStateTitle: {
     color: DARK,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     marginBottom: 6,
   },
-  emptyRecentSubtext: {
-    color: 'rgba(26,18,8,0.62)',
+  emptyStateText: {
+    color: 'rgba(26,18,8,0.58)',
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 18,
   },
   recentsList: {
     gap: 12,
   },
-  recipeCard: {
+  recentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: CREAM,
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     paddingHorizontal: 16,
-    paddingVertical: 15,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: 'rgba(26,18,8,0.08)',
   },
-  recipeCardBody: {
+  recentBody: {
     flex: 1,
     marginRight: 10,
   },
-  recipeTitle: {
+  recentTitle: {
     color: DARK,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     marginBottom: 4,
   },
-  recipeMeta: {
-    color: 'rgba(26,18,8,0.55)',
+  recentMeta: {
+    color: 'rgba(26,18,8,0.52)',
     fontSize: 12,
-    marginBottom: 8,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  timePill: {
-    backgroundColor: RED,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  timePillText: {
-    color: '#FFF8F2',
-    fontSize: 11,
-    fontWeight: '700',
   },
   pressed: {
     opacity: 0.82,

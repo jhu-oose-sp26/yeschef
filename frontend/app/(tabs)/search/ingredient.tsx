@@ -1,18 +1,32 @@
-import { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
+
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 const DARK = '#1A1208';
 const TEAL = '#05A8AA';
-const GREEN = '#B8D5B8';
-const TAN = '#FFEDE2';
 const RED = '#BC412B';
 const CREAM = '#FFF8F2';
+const SOFT_TEAL = '#D8F1F2';
 
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const LETTER_ROWS = [
+  ['A', 'B', 'C', 'D', 'E'],
+  ['F', 'G', 'H', 'I', 'J'],
+  ['K', 'L', 'M', 'N', 'O'],
+  ['P', 'Q', 'R', 'S', 'T'],
+  ['U', 'V', 'W'],
+];
 
 const DATA = [
-  'Almond', 'Apple', 'Apricot', 'Avocado',
+  'Almond', 'Apple', 'Apricot', 'Artichoke', 'Avocado',
   'Banana', 'Barley', 'Beef', 'Brisket', 'Brown Rice', 'Buckwheat',
   'Cheese', 'Cherries', 'Chia Seed', 'Chicken', 'Chicken Breast',
   'Chicken Leg', 'Chicken Thigh', 'Chicken Wings', 'Chocolate', 'Coconut',
@@ -35,106 +49,94 @@ const DATA = [
 
 export default function SearchIngredientScreen() {
   const router = useRouter();
-  const scrollRef = useRef<ScrollView>(null);
-  const sectionOffsets = useRef<Record<string, number>>({});
-  const [activeLetter, setActiveLetter] = useState('a');
+  const [query, setQuery] = useState('');
+  const [selectedLetter, setSelectedLetter] = useState('A');
 
-  const grouped = useMemo(
-    () =>
-      DATA.reduce<Record<string, string[]>>((acc, item) => {
-        const letter = item[0].toLowerCase();
-        if (!acc[letter]) acc[letter] = [];
-        acc[letter].push(item);
-        return acc;
-      }, {}),
-    [],
-  );
-
-  const activeLetters = new Set(Object.keys(grouped));
-
-  function jumpToLetter(letter: string) {
-    const offset = sectionOffsets.current[letter];
-    if (offset !== undefined && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: offset, animated: true });
-      setActiveLetter(letter);
+  const filteredIngredients = useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    if (trimmed.length > 0) {
+      return DATA.filter((item) => item.toLowerCase().includes(trimmed));
     }
-  }
+    return DATA.filter((item) => item.startsWith(selectedLetter));
+  }, [query, selectedLetter]);
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.navigate('/search')} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backText}>{'< BACK'}</Text>
+        <Pressable onPress={() => router.navigate('/search')} style={styles.backPill}>
+          <Text style={styles.backPillText}>{'< SEARCH'}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Search by ingredient</Text>
+        <Text style={styles.headerEyebrow}>SEARCH BY</Text>
+        <Text style={styles.headerTitle}>ingredient</Text>
       </View>
 
-      <View style={styles.body}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scroll}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        >
-          {Object.keys(grouped)
-            .sort()
-            .map((letter) => (
-              <View
-                key={letter}
-                onLayout={(event) => {
-                  sectionOffsets.current[letter] = event.nativeEvent.layout.y;
-                }}
-              >
-                <Text style={styles.sectionBadge}>{letter}</Text>
-                {grouped[letter].map((item) => (
-                  <Pressable
-                    key={item}
-                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/search/filter-results',
-                        params: {
-                          type: 'ingredient',
-                          value: item.toLowerCase(),
-                          label: item,
-                        },
-                      })
-                    }
-                  >
-                    <Text style={styles.cardText}>{item}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            ))}
-        </ScrollView>
-
-        <View style={styles.sidebar}>
-          {ALPHABET.map((letter) => {
-            const enabled = activeLetters.has(letter);
-            const selected = activeLetter === letter;
-            return (
-              <Pressable
-                key={letter}
-                onPress={() => enabled && jumpToLetter(letter)}
-                hitSlop={4}
-                style={[
-                  styles.sidebarLetterBtn,
-                  selected && enabled && styles.sidebarLetterBtnActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.sidebarLetter,
-                    !enabled && styles.sidebarLetterDisabled,
-                    selected && enabled && styles.sidebarLetterActive,
-                  ]}
-                >
-                  {letter}
-                </Text>
-              </Pressable>
-            );
-          })}
+      <View style={styles.sheet}>
+        <View style={styles.searchBar}>
+          <IconSymbol name="magnifyingglass" size={16} color="rgba(26,18,8,0.36)" />
+          <TextInput
+            placeholder="search ingredients..."
+            placeholderTextColor="rgba(26,18,8,0.34)"
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
+            autoCapitalize="none"
+            style={styles.searchInput}
+          />
         </View>
+
+        <View style={styles.letterGrid}>
+          {LETTER_ROWS.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.letterRow}>
+              {row.map((letter) => {
+                const selected = selectedLetter === letter && query.trim().length === 0;
+                return (
+                  <Pressable
+                    key={letter}
+                    style={[styles.letterChip, selected && styles.letterChipSelected]}
+                    onPress={() => {
+                      setQuery('');
+                      setSelectedLetter(letter);
+                    }}
+                  >
+                    <Text style={[styles.letterChipText, selected && styles.letterChipTextSelected]}>
+                      {letter}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.resultsLabel}>
+          {query.trim().length > 0 ? 'MATCHING INGREDIENTS' : `${selectedLetter} INGREDIENTS`}
+        </Text>
+
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
+          {filteredIngredients.length === 0 ? (
+            <Text style={styles.emptyText}>No ingredients match your search.</Text>
+          ) : (
+            filteredIngredients.map((item) => (
+              <Pressable
+                key={item}
+                style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/search/filter-results',
+                    params: {
+                      type: 'ingredient',
+                      value: item.toLowerCase(),
+                      label: item,
+                    },
+                  })
+                }
+              >
+                <Text style={styles.cardText}>{item}</Text>
+                <IconSymbol name="chevron.right" size={18} color={DARK} />
+              </Pressable>
+            ))
+          )}
+        </ScrollView>
       </View>
     </View>
   );
@@ -143,95 +145,133 @@ export default function SearchIngredientScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: TAN,
+    backgroundColor: TEAL,
   },
   header: {
     backgroundColor: TEAL,
     paddingTop: 56,
-    paddingBottom: 22,
     paddingHorizontal: 24,
+    paddingBottom: 26,
   },
-  backBtn: {
-    marginBottom: 12,
+  backPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginBottom: 14,
   },
-  backText: {
+  backPillText: {
     color: '#FFF8F2',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  headerEyebrow: {
+    color: 'rgba(255,248,242,0.62)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2.2,
+    marginBottom: 8,
   },
   headerTitle: {
     color: '#FFF8F2',
-    fontSize: 30,
-    fontWeight: '900',
-    lineHeight: 34,
-    maxWidth: 240,
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 42,
+    lineHeight: 42,
   },
-  body: {
+  sheet: {
     flex: 1,
+    backgroundColor: CREAM,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+  },
+  searchBar: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(26,18,8,0.08)',
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: DARK,
+  },
+  letterGrid: {
+    marginBottom: 18,
+  },
+  letterRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  letterChip: {
+    minWidth: 50,
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(26,18,8,0.12)',
+  },
+  letterChipSelected: {
+    backgroundColor: DARK,
+    borderColor: DARK,
+  },
+  letterChipText: {
+    color: DARK,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  letterChipTextSelected: {
+    color: '#FFF8F2',
+  },
+  resultsLabel: {
+    color: RED,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 12,
   },
   scroll: {
     flex: 1,
   },
   list: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
     paddingBottom: 48,
-  },
-  sectionBadge: {
-    color: RED,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 2,
-    marginBottom: 10,
-    marginTop: 8,
+    gap: 10,
   },
   card: {
-    backgroundColor: GREEN,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: SOFT_TEAL,
     borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   cardText: {
     color: DARK,
     fontSize: 17,
     fontWeight: '800',
+    flex: 1,
+    marginRight: 10,
   },
-  sidebar: {
-    width: 34,
-    paddingTop: 18,
-    paddingBottom: 18,
-    paddingRight: 6,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sidebarLetterBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sidebarLetterBtnActive: {
-    backgroundColor: RED,
-  },
-  sidebarLetter: {
-    color: RED,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  sidebarLetterDisabled: {
-    color: 'rgba(188,65,43,0.28)',
-  },
-  sidebarLetterActive: {
-    color: CREAM,
+  emptyText: {
+    color: 'rgba(26,18,8,0.58)',
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 18,
   },
   pressed: {
     opacity: 0.82,
