@@ -21,7 +21,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Optional<Post> findById(Long id);
 
     @EntityGraph(attributePaths = {"recipe", "recipe.source", "recipe.instruction"})
-    Optional<Post> findByRecipeId(Long recipeId);
+    Optional<Post> findFirstByRecipeId(Long recipeId);
 
     @EntityGraph(attributePaths = {"recipe", "recipe.source", "recipe.instruction"})
     List<Post> findByRecipe_IdIn(List<Long> recipeIds);

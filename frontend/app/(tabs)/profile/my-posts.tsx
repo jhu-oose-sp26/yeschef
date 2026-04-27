@@ -12,6 +12,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { getUserRecipes } from '@/lib/api/users';
 import type { Recipe } from '@/lib/api/recipes';
+import { getPostByRecipeId } from '@/lib/api/posts';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 const DARK = '#1A1208';
@@ -43,6 +44,7 @@ export default function MyPostsScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [navigating, setNavigating] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -65,6 +67,22 @@ export default function MyPostsScreen() {
   const handleBack = () => {
     if (router.canGoBack()) router.back();
     else router.navigate('/(tabs)/profile');
+  };
+
+  const handleCardPress = async (recipe: Recipe) => {
+    setNavigating(recipe.id);
+    try {
+      const post = await getPostByRecipeId(recipe.id);
+      if (post) {
+        router.push({ pathname: '/posts/[id]', params: { id: String(post.id) } });
+      } else {
+        router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'my-posts', userId } });
+      }
+    } catch {
+      router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'my-posts', userId } });
+    } finally {
+      setNavigating(null);
+    }
   };
 
   return (
@@ -108,12 +126,8 @@ export default function MyPostsScreen() {
                 <Pressable
                   key={recipe.id}
                   style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/recipes/[id]',
-                      params: { id: String(recipe.id), from: 'my-posts', userId },
-                    })
-                  }>
+                  disabled={navigating === recipe.id}
+                  onPress={() => handleCardPress(recipe)}>
                   <View style={styles.cardTopAccent} />
                   <View style={styles.cardMain}>
                     <View style={styles.cardTextWrap}>
@@ -141,10 +155,12 @@ export default function MyPostsScreen() {
 
                   <View style={styles.cardFooter}>
                     <Text style={styles.footerText}>
-                      @{authUser?.username ?? 'you'} tap to view full recipe
+                      @{authUser?.username ?? 'you'} tap to view post
                     </Text>
                     <View style={styles.arrowCircle}>
-                      <MaterialIcons name="chevron-right" size={22} color={CREAM} />
+                      {navigating === recipe.id
+                        ? <ActivityIndicator size="small" color={CREAM} />
+                        : <MaterialIcons name="chevron-right" size={22} color={CREAM} />}
                     </View>
                   </View>
                 </Pressable>
