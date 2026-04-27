@@ -1,6 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,13 +10,21 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  type NotificationResponse,
+  type NotificationType,
+} from '@/lib/api/notifications';
+import { useAuth } from '@/lib/auth/AuthContext';
+
 const DARK = '#1A1208';
 const TEAL = '#05A8AA';
 const TAN = '#FFEDE2';
 const RED = '#BC412B';
 const CREAM = '#FFF8F2';
 
-type NotificationKind = 'comment' | 'save' | 'friend' | 'rating';
+type NotificationKind = 'comment' | 'liked' | 'save' | 'friend' | 'rating';
 
 type NotificationItem = {
   id: string;
@@ -25,64 +34,8 @@ type NotificationItem = {
   highlight: string;
   timeLabel: string;
   isNew: boolean;
+  recipeId: number | null;
 };
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: '1',
-    kind: 'comment',
-    actor: '@mike_eats',
-    message: 'commented on your post',
-    highlight: '"made this last night!"',
-    timeLabel: '2m ago',
-    isNew: true,
-  },
-  {
-    id: '2',
-    kind: 'save',
-    actor: '@sarah_m',
-    message: 'saved your recipe',
-    highlight: 'Crispy parmesan chicken',
-    timeLabel: '14m ago',
-    isNew: true,
-  },
-  {
-    id: '3',
-    kind: 'friend',
-    actor: '@dessert_queen',
-    message: 'added you as a friend',
-    highlight: '',
-    timeLabel: '1h ago',
-    isNew: true,
-  },
-  {
-    id: '4',
-    kind: 'comment',
-    actor: '@laylacooks',
-    message: 'commented',
-    highlight: '"what parmesan do you use?"',
-    timeLabel: '3h ago',
-    isNew: false,
-  },
-  {
-    id: '5',
-    kind: 'rating',
-    actor: '@ryangrills',
-    message: 'rated your recipe',
-    highlight: '4 stars for ease',
-    timeLabel: '5h ago',
-    isNew: false,
-  },
-  {
-    id: '6',
-    kind: 'save',
-    actor: '@mike_eats',
-    message: 'saved your recipe',
-    highlight: 'Brown butter pasta',
-    timeLabel: 'yesterday',
-    isNew: false,
-  },
-];
 
 const META_BY_KIND: Record<
   NotificationKind,
@@ -105,6 +58,12 @@ const META_BY_KIND: Record<
     tint: '#FFF0E8',
     iconColor: '#E07A5F',
   },
+  liked: {
+    icon: 'favorite-border',
+    accent: '#E07A5F',
+    tint: '#FFF0E8',
+    iconColor: '#E07A5F',
+  },
   friend: {
     icon: 'person-add-alt-1',
     accent: RED,
@@ -119,9 +78,134 @@ const META_BY_KIND: Record<
   },
 };
 
+function formatTimeLabel(createdAt: string) {
+  const createdMs = new Date(createdAt).getTime();
+  if (Number.isNaN(createdMs)) return '';
+
+  const diffMs = Date.now() - createdMs;
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return new Date(createdAt).toLocaleDateString();
+}
+
+function mapNotificationType(type: NotificationType): NotificationKind {
+  switch (type) {
+    case 'COMMENT':
+      return 'comment';
+    case 'RATING':
+      return 'rating';
+    case 'FRIEND_REQUEST':
+      return 'friend';
+    case 'SAVED':
+      return 'save';
+    case 'LIKED':
+      return 'liked';
+  }
+}
+
+function toNotificationItem(notification: NotificationResponse): NotificationItem {
+  const actor = `@${notification.actorUsername}`;
+  const kind = mapNotificationType(notification.type);
+
+  switch (notification.type) {
+    case 'COMMENT':
+      return {
+        id: String(notification.id),
+        kind,
+        actor,
+        message: 'commented on your post',
+        highlight: notification.referenceTitle ?? '',
+        timeLabel: formatTimeLabel(notification.createdAt),
+        isNew: !notification.isRead,
+        recipeId: notification.recipeId,
+      };
+    case 'RATING':
+      return {
+        id: String(notification.id),
+        kind,
+        actor,
+        message: 'rated your recipe',
+        highlight: notification.referenceTitle ?? '',
+        timeLabel: formatTimeLabel(notification.createdAt),
+        isNew: !notification.isRead,
+        recipeId: notification.recipeId,
+      };
+    case 'FRIEND_REQUEST':
+      return {
+        id: String(notification.id),
+        kind,
+        actor,
+        message: 'added you as a friend',
+        highlight: '',
+        timeLabel: formatTimeLabel(notification.createdAt),
+        isNew: !notification.isRead,
+        recipeId: null,
+      };
+    case 'SAVED':
+      return {
+        id: String(notification.id),
+        kind,
+        actor,
+        message: 'saved your recipe',
+        highlight: notification.referenceTitle ?? '',
+        timeLabel: formatTimeLabel(notification.createdAt),
+        isNew: !notification.isRead,
+        recipeId: notification.recipeId,
+      };
+    case 'LIKED':
+      return {
+        id: String(notification.id),
+        kind,
+        actor,
+        message: 'liked your recipe',
+        highlight: notification.referenceTitle ?? '',
+        timeLabel: formatTimeLabel(notification.createdAt),
+        isNew: !notification.isRead,
+        recipeId: notification.recipeId,
+      };
+  }
+}
+
 export default function NotificationsScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const { user: authUser } = useAuth();
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [markingRead, setMarkingRead] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadNotifications = useCallback(async () => {
+    if (!authUser) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getNotifications(authUser.id);
+      setNotifications(data.map(toNotificationItem));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load notifications.');
+    } finally {
+      setLoading(false);
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   const newNotifications = useMemo(
     () => notifications.filter((notification) => notification.isNew),
@@ -132,10 +216,20 @@ export default function NotificationsScreen() {
     [notifications],
   );
 
-  const markAllRead = () => {
-    setNotifications((current) =>
-      current.map((notification) => ({ ...notification, isNew: false })),
-    );
+  const markAllRead = async () => {
+    if (!authUser || newNotifications.length === 0) return;
+
+    setMarkingRead(true);
+    try {
+      await markAllNotificationsRead(authUser.id);
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, isNew: false })),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to mark notifications as read.');
+    } finally {
+      setMarkingRead(false);
+    }
   };
 
   return (
@@ -158,10 +252,18 @@ export default function NotificationsScreen() {
               <Text style={styles.backButtonText}>BACK</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.markReadButton, pressed && styles.pressed]}
-              onPress={markAllRead}
+              style={({ pressed }) => [
+                styles.markReadButton,
+                (pressed || markingRead || newNotifications.length === 0) && styles.pressed,
+              ]}
+              onPress={() => void markAllRead()}
+              disabled={markingRead || newNotifications.length === 0}
             >
-              <Text style={styles.markReadText}>MARK ALL READ</Text>
+              {markingRead ? (
+                <ActivityIndicator size="small" color={RED} />
+              ) : (
+                <Text style={styles.markReadText}>MARK ALL READ</Text>
+              )}
             </Pressable>
           </View>
 
@@ -170,25 +272,44 @@ export default function NotificationsScreen() {
         </View>
 
         <View style={styles.sheet}>
-          {newNotifications.length > 0 && (
+          {loading ? (
+            <View style={styles.centered}>
+              <ActivityIndicator size="large" color={TEAL} />
+            </View>
+          ) : error ? (
+            <View style={styles.centered}>
+              <Text style={styles.errorText}>{error}</Text>
+              <Pressable style={styles.retryButton} onPress={() => void loadNotifications()}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </Pressable>
+            </View>
+          ) : notifications.length === 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>No notifications yet. Real activity will show up here.</Text>
+            </View>
+          ) : (
             <>
-              <Text style={styles.sectionLabel}>NEW</Text>
-              <View style={styles.list}>
-                {newNotifications.map((notification) => (
-                  <NotificationCard key={notification.id} notification={notification} />
-                ))}
-              </View>
-            </>
-          )}
+              {newNotifications.length > 0 && (
+                <>
+                  <Text style={styles.sectionLabel}>NEW</Text>
+                  <View style={styles.list}>
+                    {newNotifications.map((notification) => (
+                      <NotificationCard key={notification.id} notification={notification} />
+                    ))}
+                  </View>
+                </>
+              )}
 
-          {earlierNotifications.length > 0 && (
-            <>
-              <Text style={[styles.sectionLabel, styles.earlierLabel]}>EARLIER</Text>
-              <View style={styles.list}>
-                {earlierNotifications.map((notification) => (
-                  <NotificationCard key={notification.id} notification={notification} />
-                ))}
-              </View>
+              {earlierNotifications.length > 0 && (
+                <>
+                  <Text style={[styles.sectionLabel, styles.earlierLabel]}>EARLIER</Text>
+                  <View style={styles.list}>
+                    {earlierNotifications.map((notification) => (
+                      <NotificationCard key={notification.id} notification={notification} />
+                    ))}
+                  </View>
+                </>
+              )}
             </>
           )}
         </View>
@@ -199,9 +320,23 @@ export default function NotificationsScreen() {
 
 function NotificationCard({ notification }: { notification: NotificationItem }) {
   const meta = META_BY_KIND[notification.kind];
+  const router = useRouter();
 
   return (
-    <Pressable style={({ pressed }) => [styles.card, { borderLeftColor: meta.accent }, pressed && styles.pressed]}>
+    <Pressable
+      style={({ pressed }) => [styles.card, { borderLeftColor: meta.accent }, pressed && styles.pressed]}
+      onPress={() => {
+        if (notification.recipeId != null) {
+          router.push({
+            pathname: '/recipes/[id]',
+            params: {
+              id: String(notification.recipeId),
+              from: 'notifications',
+            },
+          });
+        }
+      }}
+    >
       <View style={[styles.iconWrap, { backgroundColor: meta.tint }]}>
         <MaterialIcons name={meta.icon} size={22} color={meta.iconColor} />
       </View>
@@ -263,6 +398,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
   },
   markReadButton: {
+    minWidth: 108,
+    alignItems: 'flex-end',
     paddingHorizontal: 2,
     paddingVertical: 8,
   },
@@ -363,6 +500,36 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     marginTop: 6,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    color: 'rgba(26,18,8,0.58)',
+    fontSize: 15,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  errorText: {
+    color: RED,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  retryButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: RED,
+  },
+  retryButtonText: {
+    color: '#FFF8F2',
+    fontWeight: '800',
   },
   pressed: {
     opacity: 0.82,

@@ -9,7 +9,7 @@ import java.time.Instant;
 public class Notification {
 
     public enum Type {
-        COMMENT, RATING, FRIEND_REQUEST, LIKED
+        COMMENT, RATING, FRIEND_REQUEST, LIKED, SAVED
     }
 
     @Id

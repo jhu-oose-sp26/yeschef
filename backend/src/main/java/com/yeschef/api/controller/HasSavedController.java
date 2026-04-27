@@ -13,12 +13,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.yeschef.api.model.HasSaved;
+import com.yeschef.api.model.Notification;
 import com.yeschef.api.model.Recipe;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.HasSavedRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
+import com.yeschef.api.service.NotificationService;
 
 // This controller exposes REST endpoints for saving and unsaving recipes per user.
 @RestController
@@ -30,15 +32,18 @@ public class HasSavedController {
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final NotificationService notificationService;
 
     public HasSavedController(HasSavedRepository hasSavedRepository,
                               UserRepository userRepository,
                               RecipeRepository recipeRepository,
-                              AuthenticatedUserService authenticatedUserService) {
+                              AuthenticatedUserService authenticatedUserService,
+                              NotificationService notificationService) {
         this.hasSavedRepository = hasSavedRepository;
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
         this.authenticatedUserService = authenticatedUserService;
+        this.notificationService = notificationService;
     }
 
     // Handle GET requests to /users/{userId}/saved
@@ -72,7 +77,22 @@ public class HasSavedController {
 
         HasSaved hasSaved = new HasSaved();
         hasSaved.setUser(currentUser);
-        hasSaved.setRecipe(recipeMaybe.get());
+        Recipe recipe = recipeMaybe.get();
+        hasSaved.setRecipe(recipe);
+
+        User recipient = null;
+        if (recipe.getSource() != null) {
+            recipient = recipe.getSource().getUser();
+        }
+
+        if (recipient != null) {
+            notificationService.createNotification(
+                recipient,
+                currentUser,
+                Notification.Type.SAVED,
+                recipe.getId()
+            );
+        }
         return ResponseEntity.ok(hasSavedRepository.save(hasSaved));
     }
 

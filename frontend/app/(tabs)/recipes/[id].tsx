@@ -179,6 +179,7 @@ export default function RecipeDetailScreen() {
         params: { maxTime: maxTime ?? '' },
       });
     }
+    else if (from === 'notifications') router.navigate('/notifications');
     else if (from === 'search') router.navigate('/search');
     else if (from === 'profile') router.navigate('/(tabs)/profile');
     else if (from === 'my-posts') router.navigate({ pathname: '/(tabs)/profile/my-posts', params: { userId: fromUserId ?? '' } });
