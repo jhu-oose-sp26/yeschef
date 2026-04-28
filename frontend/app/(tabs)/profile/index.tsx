@@ -3,6 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -40,6 +41,7 @@ export default function ProfileScreen() {
   const [postsCount, setPostsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!authUser) return;
@@ -91,7 +93,7 @@ export default function ProfileScreen() {
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <View style={styles.hero}>
         <Pressable
-          onPress={logout}
+          onPress={() => setShowLogoutConfirm(true)}
           style={({ pressed }) => [styles.moreButton, pressed && styles.pressed]}
           hitSlop={12}>
           <MaterialIcons name="more-horiz" size={26} color={CREAM} />
@@ -229,6 +231,29 @@ export default function ProfileScreen() {
           </View>
         </Pressable>
       </View>
+
+      <Modal visible={showLogoutConfirm} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Log out</Text>
+            <Text style={styles.modalBody}>Are you sure you want to log out?</Text>
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={({ pressed }) => [styles.modalCancelBtn, pressed && styles.pressed]}
+                onPress={() => setShowLogoutConfirm(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.modalLogoutBtn, pressed && styles.pressed]}
+                onPress={() => { setShowLogoutConfirm(false); logout(); }}
+              >
+                <Text style={styles.modalLogoutText}>Log out</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -514,5 +539,59 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.84,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  modalCard: {
+    backgroundColor: CREAM,
+    borderRadius: 24,
+    padding: 28,
+    width: '100%',
+    maxWidth: 360,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: DARK,
+    marginBottom: 8,
+  },
+  modalBody: {
+    fontSize: 15,
+    color: 'rgba(26,18,8,0.6)',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'flex-end',
+  },
+  modalCancelBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26,18,8,0.15)',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: DARK,
+  },
+  modalLogoutBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: RED,
+  },
+  modalLogoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

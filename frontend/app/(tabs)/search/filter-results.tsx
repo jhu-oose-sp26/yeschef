@@ -91,7 +91,7 @@ export default function SearchFilterResultsScreen() {
           onPress={() => router.navigate(backRoute as '/search/time' | '/search/ingredient')}
           style={styles.backPill}
         >
-          <Text style={styles.backPillText}>{type === 'time' ? '< SEARCH' : '< SEARCH'}</Text>
+          <Text style={styles.backPillText}>{type === 'time' ? '< TIME' : '< INGREDIENT'}</Text>
         </Pressable>
         <Text style={styles.headerEyebrow}>RESULTS FOR</Text>
         <Text style={styles.headerTitle}>{displayValue}</Text>

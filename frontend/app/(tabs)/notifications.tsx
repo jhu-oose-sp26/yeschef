@@ -113,65 +113,26 @@ function mapNotificationType(type: NotificationType): NotificationKind {
 }
 
 function toNotificationItem(notification: NotificationResponse): NotificationItem {
-  const actor = `@${notification.actorUsername}`;
-  const kind = mapNotificationType(notification.type);
+  const base = {
+    id: String(notification.id),
+    kind: mapNotificationType(notification.type),
+    actor: `@${notification.actorUsername}`,
+    timeLabel: formatTimeLabel(notification.createdAt),
+    isNew: !notification.isRead,
+  };
+  const title = notification.referenceTitle ?? '';
 
   switch (notification.type) {
     case 'COMMENT':
-      return {
-        id: String(notification.id),
-        kind,
-        actor,
-        message: 'commented on your post',
-        highlight: notification.referenceTitle ?? '',
-        timeLabel: formatTimeLabel(notification.createdAt),
-        isNew: !notification.isRead,
-        recipeId: notification.recipeId,
-      };
+      return { ...base, message: 'commented on your post', highlight: title, recipeId: notification.recipeId };
     case 'RATING':
-      return {
-        id: String(notification.id),
-        kind,
-        actor,
-        message: 'rated your recipe',
-        highlight: notification.referenceTitle ?? '',
-        timeLabel: formatTimeLabel(notification.createdAt),
-        isNew: !notification.isRead,
-        recipeId: notification.recipeId,
-      };
+      return { ...base, message: 'rated your recipe', highlight: title, recipeId: notification.recipeId };
     case 'FRIEND_REQUEST':
-      return {
-        id: String(notification.id),
-        kind,
-        actor,
-        message: 'added you as a friend',
-        highlight: '',
-        timeLabel: formatTimeLabel(notification.createdAt),
-        isNew: !notification.isRead,
-        recipeId: null,
-      };
+      return { ...base, message: 'added you as a friend', highlight: '', recipeId: null };
     case 'SAVED':
-      return {
-        id: String(notification.id),
-        kind,
-        actor,
-        message: 'saved your recipe',
-        highlight: notification.referenceTitle ?? '',
-        timeLabel: formatTimeLabel(notification.createdAt),
-        isNew: !notification.isRead,
-        recipeId: notification.recipeId,
-      };
+      return { ...base, message: 'saved your recipe', highlight: title, recipeId: notification.recipeId };
     case 'LIKED':
-      return {
-        id: String(notification.id),
-        kind,
-        actor,
-        message: 'liked your recipe',
-        highlight: notification.referenceTitle ?? '',
-        timeLabel: formatTimeLabel(notification.createdAt),
-        isNew: !notification.isRead,
-        recipeId: notification.recipeId,
-      };
+      return { ...base, message: 'liked your recipe', highlight: title, recipeId: notification.recipeId };
   }
 }
 
