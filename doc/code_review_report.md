@@ -1,8 +1,20 @@
 # Code Review
 
 ## Anna
-- Description of the issue/inefficiency **File names in bold**
-    - Detailed explanations of your improvements/refactorings
+### 1. Address latency issue regarding DB query/fetch for pulling recipes by cook time
+- **Files affected** `app/api/repository/RecipeRepository.java`
+- Frontend calls have a very high latency due to api calling repository method `findByMaxTotalTime` which returns a list of recipes with a cook and prep combined time less than an integer parameter. The previous implementation would run in O(n) in the best case, and the latency scales with the database, making the UI very slow and inefficient due to individual row fetch and filtering.
+    - **Fix:** Addition of EntityGraph call will call the database once with a large fetch, which allows "local" filtering to occur, as opposed to repeated DB calls, making the API more efficient and the frontend less slow as a result.
+
+### 2. Elaborate test suite for recently developed controllers: HasLiked
+- **Files affected** `app/test/../api/HasLikedControllerTests.java`, `app/service/NotificationService.java`
+- Testbench previously mostly focused on basic functionality, which can result in bugs for edge cases and uncommon functionality. It originially primarily validated standard success cases (e.g., liking/unliking a recipe and retrieving liked recipes), but did not sufficiently cover edge cases, concurrency scenarios, or enforcement of business rules, leaving the system vulnerable to issues such as duplicate likes, improper notification triggering, inconsistent API responses, and unhandled exceptions during database operations.
+    - **Fix:** Expanded the test suite to cover deeper functionality of the like/unlike system and notification pipeline, focusing on edge cases, failure modes, and data integrity rather than just basic functionality and failures. Also improved security in `NotificationService` by adding null and duplicate checks. This improves reliability, scalability, and robustness by ensuring no bugs in the backend for key functionality.
+
+### 3. Elaborate test suite for recently developed controllers: Post
+- **Files affected** `app/test/../api/PostControllerTests.java`
+- The initial test suite for the Post controller primarily covered basic test cases to check retrieving posts, creating posts, and simple updates but lacked coverage for edge cases, failure conditions, and enforcement of business rules (e.g., duplicate prevention, recipe reuse, and validation). This created risk of silent failures, inconsistent data, and regressions as the feature set expanded.
+    - **Fix:** New tests added to the testbench ensure stronger guarantees around data integrity, API correctness, and security compliance. This makes the backend more resilient to edge cases and concurrency-related issues. Since posts are an integral part of the app, more robust and maintainable foundation for post-related functionality is important so that the frontend can rely on the API with higher confidence.
 
 ## Caroline
 

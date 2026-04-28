@@ -20,6 +20,9 @@ public class NotificationService {
             Notification.Type type,
             Long referenceId
     ) {
+        if (recipient == null || actor == null) return;
+        if (recipient.getId() == null || actor.getId() == null) return;
+        if (recipient.getId().equals(actor.getId())) return;
         if (recipient.getId().equals(actor.getId())) return;
 
         Notification n = new Notification();

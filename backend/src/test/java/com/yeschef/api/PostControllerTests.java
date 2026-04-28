@@ -223,4 +223,128 @@ class PostControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].recipe.title").value("Pasta"));
     }
+
+    @Test
+    void getPostById_returnsNotFound_whenMissing() throws Exception {
+        when(postRepository.findById(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/posts/{id}", 999L)
+                .with(user("test").roles("USER")))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deletePost_returnsNotFound_whenMissing() throws Exception {
+        when(postRepository.existsById(999L)).thenReturn(false);
+
+        mockMvc.perform(delete("/posts/{id}", 999L)
+                .with(user("test").roles("USER"))
+                .with(csrf()))
+            .andExpect(status().isNotFound());
+
+        verify(postRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void createPost_createsNewRecipe_whenNotFound() throws Exception {
+        when(recipeRepository.findByTitleIgnoreCase("New Dish"))
+            .thenReturn(Optional.empty());
+
+        Recipe savedRecipe = buildRecipe(2L, "New Dish");
+        when(recipeRepository.save(any())).thenReturn(savedRecipe);
+
+        Post savedPost = buildPost(200L, savedRecipe);
+        when(postRepository.save(any())).thenReturn(savedPost);
+
+        String json = """
+        {
+            "image": "img.jpg",
+            "recipe": {
+                "title": "New Dish",
+                "sourceType": "USER",
+                "prepTime": 5,
+                "cookTime": 5,
+                "ingredients": [],
+                "steps": []
+            }
+        }
+        """;
+
+        mockMvc.perform(post("/posts")
+                .with(user("test").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(200L));
+
+        verify(recipeRepository, times(1)).save(any());
+    }
+
+    @Test
+    void updatePost_updatesNotes() throws Exception {
+        Recipe recipe = buildRecipe(1L, "Pasta");
+        Post post = buildPost(1L, recipe);
+
+        when(postRepository.findById(1L)).thenReturn(Optional.of(post));
+        when(postRepository.save(any())).thenReturn(post);
+
+        String json = """
+        {
+            "image": null,
+            "notes": "Updated notes"
+        }
+        """;
+
+        mockMvc.perform(put("/posts/{id}", 1L)
+                .with(user("test").roles("USER"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+            .andExpect(status().isOk());
+
+        verify(postRepository).save(any());
+    }
+
+    @Test
+    void getByName_returnsEmpty_whenNoMatches() throws Exception {
+        when(postRepository.findByRecipe_TitleContainingIgnoreCase("xyz"))
+            .thenReturn(List.of());
+
+        mockMvc.perform(get("/posts/by-name?name=xyz")
+                .with(user("test").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void createPost_requiresAuthentication() throws Exception {
+        mockMvc.perform(post("/posts")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createPost_returnsForbidden_withoutCsrf() throws Exception {
+        mockMvc.perform(post("/posts")
+                .with(user("test").roles("USER"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getAllPosts_doesNotExposeComments() throws Exception {
+        Recipe recipe = buildRecipe(1L, "Pasta");
+        Post post = buildPost(10L, recipe);
+
+        when(postRepository.findAll()).thenReturn(List.of(post));
+
+        mockMvc.perform(get("/posts").with(user("test").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].comments").doesNotExist());
+    }
+
 }
