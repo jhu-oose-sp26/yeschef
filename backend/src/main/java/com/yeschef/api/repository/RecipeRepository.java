@@ -40,14 +40,18 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     // FILTERING:
     // Query to get the time it takes to make a recipe by summing prep time and cooktime
+    @EntityGraph(attributePaths = {
+        "source",
+        "instruction",
+        "instruction.steps",
+        "ingredients"
+    })
     @Query("""
-        SELECT r
-        FROM Recipe r
-        JOIN r.instruction i
-        WHERE (i.prepTime + i.cookTime) <= :maxTime
+    SELECT r
+    FROM Recipe r
+    JOIN r.instruction i
+    WHERE (i.prepTime + i.cookTime) <= :maxTime
     """)
-    // Used by filtering where maxTime will be a filter parameter -> used to return
-    // all recipes under a certain number of minutes
     List<Recipe> findByMaxTotalTime(@Param("maxTime") int maxTime);
 
     // Get all recipes that contain a certain ingredient

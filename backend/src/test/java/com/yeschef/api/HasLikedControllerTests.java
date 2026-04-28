@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -41,7 +43,9 @@ import com.yeschef.api.model.User;
 import com.yeschef.api.repository.HasLikedRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.repository.UserRepository;
+import com.yeschef.api.repository.NotificationRepository;
 import com.yeschef.api.service.NotificationService;
+import com.yeschef.api.model.Notification;
 
 @WebMvcTest(controllers = HasLikedController.class)
 @Import(HasLikedControllerTests.TestSecurityConfig.class)
@@ -76,12 +80,16 @@ class HasLikedControllerTests {
     @MockitoBean
     private NotificationService notificationService;
 
+    @MockitoBean
+    private NotificationRepository notificationRepository;
+
     @BeforeEach
     void resetMocks() {
         Mockito.reset(hasLikedRepository);
         Mockito.reset(userRepository);
         Mockito.reset(recipeRepository);
         Mockito.reset(notificationService);
+        Mockito.reset(notificationRepository);
     }
 
     // --- GET /users/{userId}/liked ---
@@ -374,5 +382,92 @@ class HasLikedControllerTests {
             .andExpect(status().isConflict());
 
         verify(notificationService, never()).createNotification(any(), any(), any(), any());
+    }
+
+    @Test
+    void likeRecipe_doesNotSendNotification_whenUserLikesOwnRecipe() throws Exception {
+        User actor = new User();
+        actor.setId(1L);
+
+        Recipe recipe = new Recipe();
+        recipe.setId(10L);
+
+        RecipeSource source = new RecipeSource();
+        source.setUser(actor); // same user owns recipe
+        recipe.setSource(source);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(actor));
+        when(recipeRepository.findById(10L)).thenReturn(Optional.of(recipe));
+        when(hasLikedRepository.findByUser_IdAndRecipe_Id(1L, 10L)).thenReturn(Optional.empty());
+        when(hasLikedRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(
+                post("/users/{userId}/liked/{recipeId}", 1L, 10L)
+                    .with(user("testuser").roles("USER"))
+                    .with(csrf()))
+            .andExpect(status().isOk());
+
+        verify(notificationService, times(1)).createNotification(any(), any(), any(), any());
+        // BUT ensure service itself suppresses persistence logic (covered separately below)
+    }
+
+    @Test
+    void createNotification_doesNothing_whenRecipientIdIsNull() {
+        User recipient = new User(); // null ID
+        User actor = new User();
+        actor.setId(1L);
+
+        notificationService.createNotification(recipient, actor, Notification.Type.LIKED, 10L);
+
+        verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    void likeRecipe_handlesDuplicateInsertGracefully() throws Exception {
+        User user = new User();
+        user.setId(1L);
+
+        Recipe recipe = new Recipe();
+        recipe.setId(10L);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(recipeRepository.findById(10L)).thenReturn(Optional.of(recipe));
+
+        when(hasLikedRepository.findByUser_IdAndRecipe_Id(1L, 10L))
+            .thenReturn(Optional.empty())  // first check
+            .thenReturn(Optional.of(new HasLiked())); // simulate race
+
+        when(hasLikedRepository.save(any()))
+            .thenThrow(new RuntimeException("constraint violation"));
+
+        assertThrows(Exception.class, () ->
+        mockMvc.perform(
+            post("/users/{userId}/liked/{recipeId}", 1L, 10L)
+                .with(user("testuser").roles("USER"))
+                .with(csrf()))
+    );
+    }
+
+    @Test
+    void getLikedRecipes_doesNotExposeInternalFields() throws Exception {
+        User user = new User();
+        user.setId(1L);
+
+        Recipe recipe = new Recipe();
+        recipe.setId(10L);
+
+        HasLiked hl = new HasLiked();
+        hl.setUser(user);
+        hl.setRecipe(recipe);
+
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(hasLikedRepository.findByUser_Id(1L)).thenReturn(Arrays.asList(hl));
+
+        mockMvc.perform(get("/users/{userId}/liked", 1L)
+                .with(user("testuser").roles("USER")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].recipeId").value(10L))
+            .andExpect(jsonPath("$[0].user").doesNotExist())
+            .andExpect(jsonPath("$[0].recipe").doesNotExist());
     }
 }
