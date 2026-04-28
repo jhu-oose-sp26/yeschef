@@ -350,8 +350,7 @@ class ApiApplicationTests {
         recipe2.setId(2L);
         recipe2.setTitle("Sugar Recipe");
 
-        when(recipeRepository.findByIngredient("flour")).thenReturn(Arrays.asList(recipe1));
-        when(recipeRepository.findByIngredient("sugar")).thenReturn(Arrays.asList(recipe2));
+        when(recipeRepository.findByIngredients(any())).thenReturn(Arrays.asList(recipe1, recipe2));
 
         mockMvc.perform(get("/recipes/by-ingredients")
                 .param("ingredientList", "flour")

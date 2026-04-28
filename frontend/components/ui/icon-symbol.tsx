@@ -25,12 +25,16 @@ const MAPPING = {
   'star.fill': 'star',
   'star': 'star-border',
   'plus.circle': 'add-circle-outline',
+  'plus': 'add',
+  'person.2.fill': 'group',
   'books.vertical.fill': 'library-books',
   'xmark': 'close',
   'bookmark.fill': 'bookmark',
   'square.grid.2x2': 'apps',
   'fork.knife': 'restaurant',
   'pencil': 'edit',
+  'bell.fill': 'notifications',
+  'trash': 'delete',
 } as IconMapping;
 
 /**

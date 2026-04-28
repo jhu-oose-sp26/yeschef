@@ -1,21 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { getSavedRecipes } from '@/lib/api/users';
+import { LoadingErrorView } from '@/components/ui/LoadingErrorView';
+import { Colors } from '@/constants/colors';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
+import { getSavedRecipes } from '@/lib/api/users';
+import { useAuth } from '@/lib/auth/AuthContext';
 
-const TEAL = '#05A8AA';
-const GREEN = '#B8D5B8';
-const TAN = '#FFEDE2';
-const RED = '#BC412B';
+function getCookbookLabel(username?: string | null, isOwnProfile?: boolean) {
+  if (isOwnProfile) return 'MY COOKBOOK';
+  if (!username) return 'COOKBOOK';
+  const base = username.toUpperCase();
+  return base.endsWith('S') ? `${base}' COOKBOOK` : `${base}'S COOKBOOK`;
+}
+
+function getSavedTitle(isOwnProfile: boolean, username?: string) {
+  if (isOwnProfile) return 'my saved';
+  return username ? `${username}'s saved` : 'saved recipes';
+}
 
 export default function MySavedScreen() {
   const router = useRouter();
-  const { userId } = useLocalSearchParams<{ userId: string }>();
+  const { user: authUser } = useAuth();
+  const { userId, username } = useLocalSearchParams<{ userId: string; username?: string }>();
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +37,7 @@ export default function MySavedScreen() {
     setError(null);
     try {
       const saved = await getSavedRecipes(Number(userId));
-      const ids = saved.map((s) => s.recipeId).filter((id): id is number => id != null);
+      const ids = saved.map((item) => item.recipeId).filter((id): id is number => id != null);
       const data = await Promise.all(ids.map((id) => getRecipe(id)));
       setRecipes(data);
     } catch (e) {
@@ -37,119 +47,265 @@ export default function MySavedScreen() {
     }
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const isOwnProfile = authUser && String(authUser.id) === userId;
+  const heroEyebrow = useMemo(
+    () => getCookbookLabel(username ?? authUser?.username, Boolean(isOwnProfile)),
+    [authUser?.username, isOwnProfile, username],
+  );
+  const heroTitle = useMemo(
+    () => getSavedTitle(Boolean(isOwnProfile), username),
+    [isOwnProfile, username],
+  );
+
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else if (isOwnProfile) router.navigate('/(tabs)/profile');
+    else {
+      router.navigate({
+        pathname: '/profile/user-profile',
+        params: {
+          userId,
+          username: username ?? '',
+        },
+      });
+    }
+  };
 
   return (
-    <ThemedView style={styles.screen}>
-
-      {/* ── Teal Header ── */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.navigate('/(tabs)/profile')} hitSlop={12} style={styles.backBtn}>
-          <Text style={styles.backText}>← BACK</Text>
+    <View style={styles.screen}>
+      <View style={styles.hero}>
+        <Pressable style={styles.backPill} onPress={handleBack}>
+          <MaterialIcons name="chevron-left" size={18} color={Colors.sand} />
+          <Text style={styles.backPillText}>PROFILE</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>My Saved</Text>
+
+        <Text style={styles.heroEyebrow}>{heroEyebrow}</Text>
+        <Text style={styles.heroTitle}>{heroTitle}</Text>
       </View>
 
-      {/* ── Body ── */}
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={TEAL} />
-        </View>
-      ) : error ? (
-        <View style={styles.centered}>
-          <ThemedText style={styles.errorText}>{error}</ThemedText>
-          <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : recipes.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>No saved recipes yet.</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
-          {recipes.map((recipe) => (
-            <View key={recipe.id} style={styles.card}>
-              <Pressable
-                style={({ pressed }) => [styles.cardPressable, { opacity: pressed ? 0.85 : 1 }]}
-                onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: String(recipe.id), from: 'my-saved', userId } })}
-              >
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>{recipe.title}</Text>
-                  {recipe.ingredients && recipe.ingredients.length > 0 && (
-                    <Text style={styles.cardSub}>{recipe.ingredients.length} ingredient{recipe.ingredients.length !== 1 ? 's' : ''}</Text>
-                  )}
-                  <View style={styles.pillRow}>
-                    {recipe.instruction?.prepTime != null && (
-                      <View style={styles.pill}>
-                        <Text style={styles.pillText}>prep {recipe.instruction.prepTime} min</Text>
-                      </View>
-                    )}
-                    {recipe.instruction?.cookTime != null && (
-                      <View style={styles.pill}>
-                        <Text style={styles.pillText}>cook {recipe.instruction.cookTime} min</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </Pressable>
+      <View style={styles.body}>
+        <LoadingErrorView loading={loading} error={error} onRetry={load}>
+          {recipes.length === 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>
+                {isOwnProfile ? 'No saved recipes yet.' : `@${username ?? 'user'} has no saved recipes yet.`}
+              </Text>
             </View>
-          ))}
-        </ScrollView>
-      )}
-    </ThemedView>
+          ) : (
+            <ScrollView contentContainerStyle={styles.list}>
+              <Text style={styles.sectionLabel}>
+                {recipes.length} SAVED RECIPE{recipes.length === 1 ? '' : 'S'}
+              </Text>
+
+              {recipes.map((recipe, index) => {
+                const prep = recipe.instruction?.prepTime;
+                const cook = recipe.instruction?.cookTime;
+                const creator = recipe.creatorUsername ? `@${recipe.creatorUsername}` : null;
+                return (
+                  <Pressable
+                    key={recipe.id}
+                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/recipes/[id]',
+                        params: {
+                          id: String(recipe.id),
+                          from: 'my-saved',
+                          userId,
+                          username: username ?? '',
+                        },
+                      })
+                    }>
+                    <View style={styles.rankWrap}>
+                      <Text style={styles.rankText}>{String(index + 1).padStart(2, '0')}</Text>
+                    </View>
+
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle} numberOfLines={2}>
+                        {recipe.title}
+                      </Text>
+                      <Text style={styles.cardMeta}>
+                        {recipe.ingredients?.length ?? 0} ingredient
+                        {(recipe.ingredients?.length ?? 0) === 1 ? '' : 's'}
+                        {creator ? ` · ${creator}` : ''}
+                      </Text>
+
+                      <View style={styles.pillRow}>
+                        {prep != null ? (
+                          <View style={[styles.timePill, styles.prepPill]}>
+                            <Text style={styles.prepPillText}>{prep}m prep</Text>
+                          </View>
+                        ) : null}
+                        {cook != null ? (
+                          <View style={[styles.timePill, styles.cookPill]}>
+                            <Text style={styles.cookPillText}>{cook}m cook</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    <View style={styles.arrowCircle}>
+                      <MaterialIcons name="chevron-right" size={22} color={Colors.sand} />
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </LoadingErrorView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: TAN },
-
-  // ── Header ──
-  header: {
-    backgroundColor: TEAL,
-    paddingTop: 56,
-    paddingBottom: 24,
+  screen: {
+    flex: 1,
+    backgroundColor: Colors.sand,
+  },
+  hero: {
+    backgroundColor: Colors.red,
+    paddingTop: 44,
     paddingHorizontal: 24,
+    paddingBottom: 22,
   },
-  backBtn: { marginBottom: 10 },
-  backText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
-  headerTitle: { color: '#fff', fontSize: 30, fontWeight: '800' },
-
-  // ── States ──
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emptyText: { fontSize: 15, color: '#2C1A0E', opacity: 0.6, fontStyle: 'italic' },
-  errorText: { color: '#c00', textAlign: 'center', marginBottom: 12 },
-  retryBtn: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10, backgroundColor: RED },
-  retryBtnText: { color: '#fff', fontWeight: '600' },
-
-  // ── List ──
-  scroll: { flex: 1 },
-  list: { padding: 20, paddingBottom: 48 },
-
-  // ── Recipe card ──
-  card: {
-    backgroundColor: GREEN,
-    borderRadius: 14,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  cardPressable: {
+  backPill: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 18,
+  },
+  backPillText: {
+    color: Colors.sand,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+  },
+  heroEyebrow: {
+    color: 'rgba(255,248,242,0.72)',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 3,
+    marginBottom: 8,
+  },
+  heroTitle: {
+    color: Colors.sand,
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 40,
+    lineHeight: 42,
+  },
+  body: {
+    flex: 1,
+    backgroundColor: Colors.sand,
+  },
+  list: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 36,
+  },
+  sectionLabel: {
+    color: Colors.red,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2.8,
+    marginBottom: 12,
+    paddingHorizontal: 6,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(26,18,8,0.08)',
     paddingHorizontal: 18,
     paddingVertical: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  cardContent: { flex: 1, marginRight: 10 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1E2A1E', marginBottom: 4 },
-  cardSub: { fontSize: 12, color: '#1E2A1E', opacity: 0.65, marginBottom: 8 },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  pill: { backgroundColor: RED, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 6, marginBottom: 2 },
-  pillText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  chevron: { fontSize: 26, color: '#1E2A1E', fontWeight: '300' },
+  rankWrap: {
+    width: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rankText: {
+    color: '#E0D6C9',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  cardContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  cardTitle: {
+    color: Colors.dark,
+    fontFamily: 'Fraunces_700Bold_Italic',
+    fontSize: 18,
+    lineHeight: 24,
+    marginBottom: 4,
+  },
+  cardMeta: {
+    color: 'rgba(26,18,8,0.58)',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timePill: {
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+  },
+  prepPill: {
+    backgroundColor: '#FFF0E8',
+  },
+  prepPillText: {
+    color: Colors.red,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  cookPill: {
+    backgroundColor: '#D8F0EF',
+  },
+  cookPillText: {
+    color: Colors.teal,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  arrowCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.dark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    color: 'rgba(26,18,8,0.58)',
+    fontSize: 15,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  pressed: {
+    opacity: 0.84,
+  },
 });

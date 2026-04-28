@@ -110,12 +110,17 @@ The project is split into two parts: a **frontend** (React Native / Expo) and a 
    git clone https://github.com/jhu-oose-sp26/yeschef.git
    cd yeschef/backend
    ```
-2. Configure your database connection in `src/main/resources/application.properties`
-   ```properties
-   spring.datasource.url=jdbc:postgresql://<your-supabase-host>:5432/postgres?sslmode=require
-   spring.datasource.username=<your-username>
-   spring.datasource.password=<your-password>
-   ```
+2. Configure your environment variables in `src/main/resources/application.properties`
+```properties
+   DB_URL=jdbc:postgresql://your-host:5432/your-database?sslmode=require
+   DB_USERNAME=your-username
+   DB_PASSWORD=your-password
+   SUPABASE_URL=https://your-project-ref.supabase.co
+   SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_JWT_SECRET=your-jwt-secret
+   SUPABASE_SERVICE_KEY=your-service-role-key-here
+```
+
 3. Build and run the Spring Boot server
    ```sh
    ./mvnw spring-boot:run
@@ -178,8 +183,8 @@ _For API endpoint details, see the controller source at [`backend/src/main/java/
 - [ ] Upload recipes by photographing handwritten notes
 - [ ] Short-form cooking videos
 - [ ] Year-in-review "Wrapped" summary
-- [ ] Comment on recipes
-- [ ] Notifications for friend requests and recipe likes
+- [x] Comment on recipes
+- [x] Notifications for friend requests and recipe likes
 - [ ] One-line recipe summaries
 - [ ] Filter recipes by cuisine type and allergens
 
@@ -190,13 +195,14 @@ See the [open issues](https://github.com/jhu-oose-sp26/yeschef/issues) for a ful
 <!-- DEPLOYMENT -->
 ## Deployment
 * **Web Application:** Live app hosted on Vercel
-  * [Click here to open](https://yeschef-sigma.vercel.app)
+  * [Click here to open](https://yaschef.com)
     * Sign up or Sign in to start using
     * Need to verify your email to create an account
-      * You will receive a link in your email - just click on it (doesn't matter what page it takes you to for now)
+      * You will receive a confirmation link in your email — click it to verify
+    * Forgot your password? Use the "Forgot Password" link on the sign-in page to receive a reset email
 * **Backend:** REST API hosted on Render
   * https://yeschef-7zi4.onrender.com
-  * The first time you make an API call, the server may take several minutes to wake up. 
+  * The first time you make an API call, the server may take several minutes to wake up.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

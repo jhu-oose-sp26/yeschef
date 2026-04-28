@@ -15,12 +15,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import com.yeschef.api.model.HasLiked;
 import com.yeschef.api.model.User;
 import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.model.Friendship;
 import com.yeschef.api.model.Recipe;
-import com.yeschef.api.model.RecipeSource;
 import com.yeschef.api.repository.FriendshipRepository;
 import com.yeschef.api.repository.RecipeRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
@@ -165,12 +163,12 @@ public class UserController {
         // notify
         notificationService.createNotification(
             friend,
-            self, 
+            self,
             Notification.Type.FRIEND_REQUEST,
             null // not necessary
         );
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // DELETE: delete a friendship
@@ -197,59 +195,28 @@ public class UserController {
     // GET: get all recipes created by a user
     @GetMapping("/{id}/recipes")
     public ResponseEntity<List<Recipe>> getUserRecipes(@PathVariable Long id) {
-        Optional<User> userMaybe = userRepository.findById(id);
-        if (userMaybe.isEmpty()) {
+        if (!userRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-        List<RecipeSource> userSources = userMaybe.get().getRecipeSources();
-        if (userSources == null || userSources.isEmpty()) {
-            return ResponseEntity.ok(new java.util.ArrayList<>());
-        }
-        return ResponseEntity.ok(recipeRepository.findBySourceIn(userSources));
+        return ResponseEntity.ok(recipeRepository.findByUserId(id));
     }
 
     // GET: get all recipes liked by a user's friends
     @GetMapping("/{id}/friends/liked")
     public ResponseEntity<List<Recipe>> getFriendsLikedRecipes(@PathVariable Long id) {
-        Optional<User> userMaybe = userRepository.findById(id);
-        if (userMaybe.isEmpty()) {
+        if (!userRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-        User user = userMaybe.get();
-
-        List<Recipe> likedByFriends = user.getFriendshipsSent().stream()
-                .map(Friendship::getFriend)
-                .flatMap(friend -> friend.getLikes().stream())
-                .map(HasLiked::getRecipe)
-                .distinct()
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(likedByFriends);
+        return ResponseEntity.ok(recipeRepository.findLikedByFriendsOf(id));
     }
 
     // GET: get a user's friend's recipes
     // Returns list of recipes from all users this user is friends w/
     @GetMapping("/{id}/friends/recipes")
     public ResponseEntity<List<Recipe>> getFriendsRecipes(@PathVariable Long id) {
-        Optional<User> userMaybe = userRepository.findById(id); // find user
-        if (userMaybe.isEmpty()) {
+        if (!userRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-        User user = userMaybe.get();
-
-        List<RecipeSource> friendsSources = user.getFriendshipsSent().stream()
-                .map(Friendship::getFriend) // get user's friend
-                .flatMap(friend -> friend.getRecipeSources().stream()) // get recipe sources for friend
-                .collect(Collectors.toList());
-
-        // if friend has no recipes
-        if (friendsSources.isEmpty()) {
-            List<Recipe> emptyList = new java.util.ArrayList<>();
-            return ResponseEntity.ok(emptyList);
-        }
-
-        // get all the recipes friends made
-        List<Recipe> allFriendsRecipes = recipeRepository.findBySourceIn(friendsSources);
-        return ResponseEntity.ok(allFriendsRecipes);
+        return ResponseEntity.ok(recipeRepository.findByFriendsOf(id));
     }
 }

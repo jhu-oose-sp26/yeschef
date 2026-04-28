@@ -43,6 +43,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.context.annotation.ComponentScan.Filter;
+import org.springframework.context.annotation.FilterType;
+
+import com.yeschef.api.config.SupabaseJwtFilter;
 import com.yeschef.api.controller.CommentController;
 import com.yeschef.api.model.Comment;
 import com.yeschef.api.model.Notification;
@@ -56,7 +60,8 @@ import com.yeschef.api.repository.UserRepository;
 import com.yeschef.api.service.AuthenticatedUserService;
 import com.yeschef.api.service.NotificationService;
 
-@WebMvcTest(controllers = CommentController.class)
+@WebMvcTest(controllers = CommentController.class,
+    excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = SupabaseJwtFilter.class))
 @Import(CommentControllerTests.TestSecurityConfig.class)
 @TestPropertySource(properties = "supabase.url=https://test.supabase.co")
 @SuppressWarnings({"null", "unused"})

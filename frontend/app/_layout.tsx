@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { useFonts, Fraunces_700Bold_Italic } from '@expo-google-fonts/fraunces';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
@@ -23,7 +24,11 @@ function AppShell() {
   useEffect(() => {
     if (isLoading) return;
 
-    const onAuthScreen = segments[0] === 'login' || segments[0] === 'signup';
+    const onAuthScreen =
+      segments[0] === 'login' ||
+      segments[0] === 'signup' ||
+      segments[0] === 'forgot-password' ||
+      segments[0] === 'update-password';
 
     if (!user && !onAuthScreen) {
       router.replace('/login');
@@ -46,6 +51,8 @@ function AppShell() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="update-password" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
@@ -54,6 +61,9 @@ function AppShell() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({ Fraunces_700Bold_Italic });
+  if (!fontsLoaded) return null;
+
   return (
     <AuthProvider>
       <AppShell />

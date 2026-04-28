@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.yeschef.api.DTO.AuthRequest;
 import com.yeschef.api.DTO.AuthResponse;
@@ -219,11 +220,76 @@ public class AuthService {
         }
     }
 
+    public void forgotPassword(String email, String redirectTo) {
+        Map<String, String> body = new HashMap<>();
+        body.put("email", email);
+
+        java.net.URI recoverUri = UriComponentsBuilder
+                .fromUriString(supabaseUrl + "/auth/v1/recover")
+                .queryParam("redirect_to", redirectTo)
+                .build()
+                .encode()
+                .toUri();
+
+        try {
+            restTemplate.exchange(
+                    recoverUri,
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, buildHeaders()),
+                    new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+        } catch (HttpClientErrorException e) {
+            log.error("Supabase forgot password error: {}", e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 429) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Too many reset attempts. Please wait before trying again.");
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to send reset email. Please try again.");
+        } catch (Exception e) {
+            log.error("Unexpected forgot password error", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to send reset email. Please try again.");
+        }
+    }
+
+    public void updatePassword(String newPassword, String accessToken) {
+        Map<String, String> body = new HashMap<>();
+        body.put("password", newPassword);
+
+        try {
+            restTemplate.exchange(
+                    supabaseUrl + "/auth/v1/user",
+                    HttpMethod.PUT,
+                    new HttpEntity<>(body, buildUserHeaders(accessToken)),
+                    new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+        } catch (HttpClientErrorException e) {
+            log.error("Supabase update password error: {}", e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 422) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "Password does not meet requirements.");
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to update password. Please try again.");
+        } catch (Exception e) {
+            log.error("Unexpected update password error", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to update password. Please try again.");
+        }
+    }
+
     private HttpHeaders buildHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("apikey", supabaseAnonKey);
         headers.setBearerAuth(supabaseAnonKey);
+        return headers;
+    }
+
+    private HttpHeaders buildUserHeaders(String userAccessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", supabaseAnonKey);
+        headers.setBearerAuth(userAccessToken);
         return headers;
     }
 

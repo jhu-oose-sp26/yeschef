@@ -34,6 +34,7 @@ import java.util.Map;
 
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 // This controller exposes REST endpoints related to posts
 @RestController
@@ -81,6 +82,14 @@ public class PostController {
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // GET BY RECIPE ID
+    @GetMapping("/by-recipe/{recipeId}")
+    public ResponseEntity<PostResponseDTO> getPostByRecipeId(@PathVariable Long recipeId) {
+        return postRepository.findFirstByRecipeId(recipeId)
+            .map(post -> ResponseEntity.ok(toPostDTO(post)))
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     // GET BY NAME
     @GetMapping("/by-name")
     public ResponseEntity<List<PostResponseDTO>> getByName(@RequestParam String name) {
@@ -122,28 +131,23 @@ public class PostController {
 
         RecipeRequestDTO recipeDTO = dto.getRecipe();
 
-        Recipe recipe = recipeRepository.findByTitleIgnoreCase(recipeDTO.getTitle())
-            .orElseGet(() -> {
-                Recipe newRecipe = toEntity(recipeDTO);
-
-                if (recipeDTO.getUserId() != null) {
-                    User user = userRepository.findById(recipeDTO.getUserId())
-                        .orElseThrow();
-                    newRecipe.getSource().setUser(user);
-                }
-
-                return recipeRepository.save(newRecipe);
-            });
-
-        if (postRepository.findByRecipeId(recipe.getId()).isPresent()) {
-            return ResponseEntity.badRequest().build();
+        Recipe newRecipe = toEntity(recipeDTO);
+        if (recipeDTO.getUserId() != null) {
+            User user = userRepository.findById(recipeDTO.getUserId()).orElseThrow();
+            RecipeSource source = newRecipe.getSource();
+            source.setUser(user);
+            sourceRepository.save(source);
         }
+        Recipe recipe = recipeRepository.save(newRecipe);
 
         Post post = new Post();
         post.setRecipe(recipe);
 
         if (dto.getImage() != null && !dto.getImage().isBlank()) {
             post.setImage(dto.getImage());
+        }
+        if (dto.getNotes() != null) {
+            post.setNotes(dto.getNotes());
         }
 
         return ResponseEntity.ok(toPostDTO(postRepository.save(post)));
@@ -159,6 +163,9 @@ public class PostController {
             .map(post -> {
                 if (dto.getImage() != null) {
                     post.setImage(dto.getImage());
+                }
+                if (dto.getNotes() != null) {
+                    post.setNotes(dto.getNotes());
                 }
                 return ResponseEntity.ok(toPostDTO(postRepository.save(post)));
             })
@@ -176,6 +183,28 @@ public class PostController {
         }
     }
     
+    // GET POSTS BY USER
+    @GetMapping("/by-user/{userId}")
+    public ResponseEntity<List<PostResponseDTO>> getPostsByUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+            postRepository.findBySourceUserId(userId)
+                .stream()
+                .map(this::toFeedPostDTO)
+                .toList()
+        );
+    }
+
+    // GET FRIENDS FEED
+    @GetMapping("/friends/{userId}")
+    public ResponseEntity<List<PostResponseDTO>> getFriendsFeed(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+            postRepository.findByFriendsOf(userId)
+                .stream()
+                .map(this::toFeedPostDTO)
+                .toList()
+        );
+    }
+
     // DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
@@ -187,11 +216,31 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
-    // DTO MAPPER
+    // DTO MAPPERS
+    private PostResponseDTO toFeedPostDTO(Post post) {
+        Recipe recipe = post.getRecipe();
+        RecipeResponseDTO recipeDTO = new RecipeResponseDTO(
+            recipe.getId(),
+            recipe.getTitle(),
+            recipe.getSource().getSourceType().toString(),
+            recipe.getInstruction().getPrepTime(),
+            recipe.getInstruction().getCookTime(),
+            List.of(),
+            List.of()
+        );
+        User creator = recipe.getSource().getUser();
+        if (creator != null) {
+            recipeDTO.setUserId(creator.getId());
+            recipeDTO.setUsername(creator.getUsername());
+        }
+        return new PostResponseDTO(post.getId(), post.getImage(), post.getNotes(), recipeDTO);
+    }
+
     private PostResponseDTO toPostDTO(Post post) {
         return new PostResponseDTO(
             post.getId(),
             post.getImage(),
+            post.getNotes(),
             toDTO(post.getRecipe())
         );
     }
@@ -218,10 +267,24 @@ public class PostController {
 
         recipe.setSource(source);
 
+        List<Recipe.Ingredient> ingredients = dto.getIngredients() == null
+            ? List.of()
+            : dto.getIngredients().stream()
+                .map(i -> new Recipe.Ingredient(i.getIngredient(), i.getQuantity()))
+                .collect(Collectors.toList());
+        recipe.setIngredients(ingredients);
+
         Instruct instruct = new Instruct();
         instruct.setPrepTime(dto.getPrepTime());
         instruct.setCookTime(dto.getCookTime());
         instruct.setRecipe(recipe);
+
+        List<Instruct.InstructionStep> steps = dto.getSteps() == null
+            ? List.of()
+            : dto.getSteps().stream()
+                .map(s -> new Instruct.InstructionStep(s.getStepNumber(), s.getStepDescription()))
+                .collect(Collectors.toList());
+        instruct.setSteps(steps);
 
         recipe.setInstruction(instruct);
 
