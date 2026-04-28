@@ -34,8 +34,21 @@
     - **Fix:** Added a `showLogoutConfirm` state and replaced the immediate `logout()` call with `setShowLogoutConfirm(true)`. A `Modal` now renders over the screen when that state is true, showing a card with a Cancel button and a red Log out button. The actual `logout()` is only triggered when the user explicitly confirms to Log out. Added `Modal` to the React Native import and added the corresponding styles to the stylesheet.
 
 ## Joey
-- Description of the issue/inefficiency **File names in bold**
-    - Detailed explanations of your improvements/refactorings
+
+### 1. RecipeImportService hardcoded prepTime and cookTime to 0 on every imported recipe, breaking the time filter
+- **Files affected:** `backend/src/main/java/com/yeschef/api/seed/RecipeImportService.java`
+- When importing recipes from GitHub via the seed flag, the service set both `prepTime` and `cookTime` to `0` for every recipe regardless of what the actual recipe was. The browse-by-time feature filters on `prepTime + cookTime <= maxTime`, so since every imported recipe had a total time of 0, every single one passed every possible time filter. A user filtering for "under 10 minutes" would get every imported recipe in the database, including complex multi-step dishes that could realistically take hours. The external recipe data was simply being ignored on import with no placeholder or honest representation of missing data.
+    - **Fix:** Added an `extractTotalMinutes` method that scans each recipe's direction steps with a regex pattern matching `"X minutes"`, `"X hours"`, and ranges like `"15 to 20 minutes"` (taking the upper bound). Hours are converted to minutes. For recipes where no parseable time exists in the instruction text, `cookTime` is set to `0` as a fallback. Recipes that have parseable time in their instruction text now get an accurate value instead of a hardcoded zero. Fully fixing recipes with no parseable time would require making `cookTime` nullable in the model layer, which was out of scope for this change.
+
+### 2. RecipeImportService always seeded from the beginning of the dataset, producing a biased sample
+- **Files affected:** `backend/src/main/java/com/yeschef/api/seed/RecipeImportService.java`
+- `discoverRecipeFiles()` returns all recipe files sorted alphabetically, and `importAllRecipes()` walked them in that order. Since the full dataset is too large to import entirely, seeding always stopped after processing the same leading slice of recipes starting with "1-..." and "A-...". This meant the seeded database never reflected the diversity of the full dataset, and any manual testing or demo using seed data would only ever see the same narrow subset of recipes.
+    - **Fix:** Added a shuffle of the discovered file list at the start of `importAllRecipes()` before iteration, so each seed run samples from across the full dataset rather than always pulling from the same alphabetical slice. The list is copied into a new `ArrayList` before shuffling to avoid mutating state owned by `discoverRecipeFiles()`. The dedup check and all other import logic remain unchanged.
+
+### 3. `auth.ts` defined a private `handleResponse` that duplicated the one already in `client.ts`
+- **Files affected:** `frontend/lib/api/auth.ts`, `frontend/lib/api/client.ts`
+- `auth.ts` imported `authHeaders` from `client.ts` but not `handleResponse`, and instead declared its own private copy. Every other API module (`posts.ts`, `comments.ts`, `ratings.ts`, `notifications.ts`) imports `handleResponse` from `client.ts` — `auth.ts` was the only one that didn't. The two implementations had diverged: `client.ts` had 401 session-expiry and retry logic but no JSON error parsing, while `auth.ts` had JSON error parsing but no session logic. This meant auth errors and non-auth errors were being handled by two separate code paths that could silently diverge further over time. If `client.ts` were ever updated to handle a new error shape from the backend, auth requests would not benefit from that change.
+    - **Fix:** Updated `client.ts` to handle both behaviors: the 401 block was restructured so that `"Session expired"` is only thrown when a stored token exists, meaning a 401 from a bad login now falls through to the general error path instead of showing a misleading session error to the user. The `!res.ok` block now also tries to parse a `message` or `error` field from JSON before falling back to raw text, which is the behavior `auth.ts` was providing on its own. With `client.ts` now covering both cases, the private copy in `auth.ts` was deleted and replaced with an import from `client.ts`, consistent with the rest of the API layer.
 
 ## Julia
 
