@@ -5,11 +5,8 @@
  * Backend must allow CORS from this origin and permit GET /recipes for validation.
  */
 
-console.log('DEBUG: NEXT_PUBLIC_API_URL is:', process.env.NEXT_PUBLIC_API_URL);
-console.log('DEBUG: EXPO_PUBLIC_API_URL is:', process.env.EXPO_PUBLIC_API_URL);
-
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 
+  process.env.NEXT_PUBLIC_API_URL ||
   process.env.EXPO_PUBLIC_API_URL ||
   'http://localhost:8080';
 

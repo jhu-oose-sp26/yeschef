@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View, TextInput, Pressable, Platform } from 'react-native';
+import { ScrollView, StyleSheet, View, TextInput, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { ThemedView } from '@/components/themed-view';
-import RecipeCard from '@/components/RecipeCard';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 

@@ -1,24 +1,14 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { LoadingErrorView } from '@/components/ui/LoadingErrorView';
+import { Colors } from '@/constants/colors';
 import { getFriends, getUsers, removeFriend } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 import type { User } from '@/lib/api/users';
-
-const DARK = '#1A1208';
-const TEAL = '#05A8AA';
-const RED = '#BC412B';
-const CREAM = '#F8F1E5';
 
 const AVATAR_COLORS = ['#BC412B', '#05A8AA', '#5A9B5A', '#8E5DB7', '#C96A3D', '#6E93B5', '#8A6D2E'];
 
@@ -125,7 +115,7 @@ export default function MyFriendsScreen() {
     <View style={styles.screen}>
       <View style={styles.hero}>
         <Pressable style={styles.backPill} onPress={handleBack}>
-          <MaterialIcons name="chevron-left" size={18} color={CREAM} />
+          <MaterialIcons name="chevron-left" size={18} color={Colors.sand} />
           <Text style={styles.backPillText}>{backLabel}</Text>
         </Pressable>
 
@@ -134,120 +124,111 @@ export default function MyFriendsScreen() {
       </View>
 
       <View style={styles.body}>
-        {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={TEAL} />
-          </View>
-        ) : error ? (
-          <View style={styles.centered}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retryBtn} onPress={load}>
-              <Text style={styles.retryBtnText}>Retry</Text>
-            </Pressable>
-          </View>
-        ) : friends.length === 0 ? (
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>
-              {isOwnProfile
-                ? 'No friends yet — go find your people.'
-                : `@${username ?? 'user'} has no friends yet.`}
-            </Text>
-            {isOwnProfile ? (
-              <Pressable style={styles.findBtn} onPress={() => router.navigate('/browse')}>
-                <Text style={styles.findBtnText}>Find Friends</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.list}>
-            <Text style={styles.sectionLabel}>
-              {friends.length} FRIEND{friends.length === 1 ? '' : 'S'}
-            </Text>
-
-            {friends.map((friend, index) => {
-              const isWorking = pending.has(friend.id);
-              const isMe = authUser?.id === friend.id;
-              return (
-                <Pressable
-                  key={friend.id}
-                  style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                  onPress={() => {
-                    if (isMe) {
-                      router.navigate('/(tabs)/profile');
-                      return;
-                    }
-                    router.push({
-                      pathname: '/profile/user-profile',
-                      params: {
-                        userId: String(friend.id),
-                        username: friend.username,
-                        from: 'my-friends',
-                      },
-                    });
-                  }}>
-                  <View style={styles.rankWrap}>
-                    <Text style={styles.rankText}>{String(index + 1).padStart(2, '0')}</Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.avatar,
-                      { backgroundColor: getAvatarColor(friend.username) },
-                    ]}>
-                    <Text style={styles.avatarText}>
-                      {friend.username[0]?.toUpperCase() ?? '?'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                      {friend.username}
-                    </Text>
-                    <Text style={styles.cardHandle}>@{friend.username}</Text>
-                  </View>
-
-                  {isOwnProfile && !isMe ? (
-                    <Pressable
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        void handleRemove(friend);
-                      }}
-                      disabled={isWorking}
-                      hitSlop={8}
-                      style={({ pressed }) => [
-                        styles.statusPill,
-                        (isWorking || pressed) && styles.statusPillPressed,
-                      ]}>
-                      {isWorking ? (
-                        <ActivityIndicator size="small" color={TEAL} />
-                      ) : (
-                        <>
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={14}
-                            color={TEAL}
-                            style={styles.statusIcon}
-                          />
-                          <Text style={styles.statusPillText}>FRIENDS</Text>
-                        </>
-                      )}
-                    </Pressable>
-                  ) : (
-                    <View style={styles.statusPill}>
-                      <MaterialCommunityIcons
-                        name="check-circle"
-                        size={14}
-                        color={TEAL}
-                        style={styles.statusIcon}
-                      />
-                      <Text style={styles.statusPillText}>FRIENDS</Text>
-                    </View>
-                  )}
+        <LoadingErrorView loading={loading} error={error} onRetry={load}>
+          {friends.length === 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>
+                {isOwnProfile
+                  ? 'No friends yet - go find your people.'
+                  : `@${username ?? 'user'} has no friends yet.`}
+              </Text>
+              {isOwnProfile ? (
+                <Pressable style={styles.findBtn} onPress={() => router.navigate('/browse')}>
+                  <Text style={styles.findBtnText}>Find Friends</Text>
                 </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
+              ) : null}
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.list}>
+              <Text style={styles.sectionLabel}>
+                {friends.length} FRIEND{friends.length === 1 ? '' : 'S'}
+              </Text>
+
+              {friends.map((friend, index) => {
+                const isWorking = pending.has(friend.id);
+                const isMe = authUser?.id === friend.id;
+                return (
+                  <Pressable
+                    key={friend.id}
+                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                    onPress={() => {
+                      if (isMe) {
+                        router.navigate('/(tabs)/profile');
+                        return;
+                      }
+                      router.push({
+                        pathname: '/profile/user-profile',
+                        params: {
+                          userId: String(friend.id),
+                          username: friend.username,
+                          from: 'my-friends',
+                        },
+                      });
+                    }}>
+                    <View style={styles.rankWrap}>
+                      <Text style={styles.rankText}>{String(index + 1).padStart(2, '0')}</Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.avatar,
+                        { backgroundColor: getAvatarColor(friend.username) },
+                      ]}>
+                      <Text style={styles.avatarText}>
+                        {friend.username[0]?.toUpperCase() ?? '?'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {friend.username}
+                      </Text>
+                      <Text style={styles.cardHandle}>@{friend.username}</Text>
+                    </View>
+
+                    {isOwnProfile && !isMe ? (
+                      <Pressable
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          void handleRemove(friend);
+                        }}
+                        disabled={isWorking}
+                        hitSlop={8}
+                        style={({ pressed }) => [
+                          styles.statusPill,
+                          (isWorking || pressed) && styles.statusPillPressed,
+                        ]}>
+                        {isWorking ? (
+                          <ActivityIndicator size="small" color={Colors.teal} />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons
+                              name="check-circle"
+                              size={14}
+                              color={Colors.teal}
+                              style={styles.statusIcon}
+                            />
+                            <Text style={styles.statusPillText}>FRIENDS</Text>
+                          </>
+                        )}
+                      </Pressable>
+                    ) : (
+                      <View style={styles.statusPill}>
+                        <MaterialCommunityIcons
+                          name="check-circle"
+                          size={14}
+                          color={Colors.teal}
+                          style={styles.statusIcon}
+                        />
+                        <Text style={styles.statusPillText}>FRIENDS</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </LoadingErrorView>
       </View>
     </View>
   );
@@ -256,10 +237,10 @@ export default function MyFriendsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.sand,
   },
   hero: {
-    backgroundColor: TEAL,
+    backgroundColor: Colors.teal,
     paddingTop: 44,
     paddingHorizontal: 24,
     paddingBottom: 22,
@@ -276,7 +257,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   backPillText: {
-    color: CREAM,
+    color: Colors.sand,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1.1,
@@ -289,14 +270,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   heroTitle: {
-    color: CREAM,
+    color: Colors.sand,
     fontFamily: 'Fraunces_700Bold_Italic',
     fontSize: 40,
     lineHeight: 42,
   },
   body: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: Colors.sand,
   },
   list: {
     paddingHorizontal: 18,
@@ -304,7 +285,7 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   sectionLabel: {
-    color: RED,
+    color: Colors.red,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2.8,
@@ -342,7 +323,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarText: {
-    color: CREAM,
+    color: Colors.sand,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -351,7 +332,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   cardTitle: {
-    color: DARK,
+    color: Colors.dark,
     fontFamily: 'Fraunces_700Bold_Italic',
     fontSize: 18,
     lineHeight: 22,
@@ -375,7 +356,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   statusPillText: {
-    color: TEAL,
+    color: Colors.teal,
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1.1,
@@ -396,30 +377,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
-  errorText: {
-    color: RED,
-    textAlign: 'center',
-    marginBottom: 6,
-    fontWeight: '700',
-  },
-  retryBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: RED,
-  },
-  retryBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
   findBtn: {
-    backgroundColor: TEAL,
+    backgroundColor: Colors.teal,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 999,
   },
   findBtnText: {
-    color: '#FFF8F2',
+    color: Colors.cream,
     fontWeight: '900',
     fontSize: 14,
     letterSpacing: 0.6,

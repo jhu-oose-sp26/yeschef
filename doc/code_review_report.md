@@ -30,5 +30,18 @@
     - **Fix:** Extracted the pattern into `frontend/components/ui/LoadingErrorView.tsx`. It accepts `loading`, `error`, `onRetry`, and `children` props and handles all three states internally. Applied it in `my-posts.tsx`, replacing ~20 lines of repeated JSX with a single wrapper. The same component can be adopted by the remaining screens with a one-line change each.
 
 ## Rad
-- Description of the issue/inefficiency **File names in bold**
-    - Detailed explanations of your improvements/refactorings
+
+### 1. `user-posts.tsx` still made a second API call on every card press (Complexity / Design)
+- **Files affected:** `app/(tabs)/profile/user-posts.tsx`
+- The screen previously called `getUserRecipes(userId)` to build the list, then â€” only when the user tapped a card â€” made a second request `getPostByRecipeId(recipe.id)` just to find the matching post ID for navigation. That added unnecessary latency to every tap, introduced an avoidable failure point, and made this profile flow inconsistent with `my-posts.tsx`, which had already been simplified earlier in the iteration. It also required extra `navigating` state just to show a temporary spinner while waiting for that second lookup to finish.
+    - **Fix:** Reworked `user-posts.tsx` to call `getUserPosts(userId)` once on load and store `FeedPost` objects directly. Cards now already know their `postId`, so navigation goes straight to the post with no second fetch. Removed the temporary `navigating` state and reused post notes as the excerpt when available, falling back to recipe-based text only when needed. The result is a cleaner single-source-of-truth design and simpler interaction logic.
+
+### 2. Profile screens were still duplicating loading/error UI and palette values (DRY / Style / Design)
+- **Files affected:** `app/(tabs)/profile/user-posts.tsx`, `app/(tabs)/profile/my-saved.tsx`, `app/(tabs)/profile/my-friends.tsx`
+- These screens each still had their own copy of the same three-state structure: a centered loading spinner, a centered error message with a Retry button, and then the actual content view on success. They also kept local color constants instead of using the shared palette. This increases maintenance cost because even small visual or UX changes have to be repeated in multiple files, and it makes it easier for the profile area to drift into inconsistent behavior over time.
+    - **Fix:** Migrated these profile screens to use the shared `LoadingErrorView` component and the centralized `constants/colors.ts` palette. That reduced duplicate JSX, made the loading and retry behavior more consistent across the profile flow, and better aligned these screens with the DRY principle and the existing frontend design direction.
+
+### 3. Frontend lint/style issues and debug leftovers were still present (Style / Naming / Tests)
+- **Files affected:** `app/(tabs)/index.tsx`, `app/forgot-password.tsx`, `constants/api.ts`, `app/(tabs)/browse/ingredient.tsx`, `app/(tabs)/browse/time.tsx`, `app/(tabs)/browse/results.tsx`, `app/search/results.tsx`, `app/(tabs)/create.tsx`, `app/(tabs)/recipes/edit.tsx`
+- The frontend still had several small but real quality issues: debug `console.log` statements in API configuration, unused imports/variables, a React hook dependency warning, JSX text escaping errors, and a stale ESLint suppression comment. None of these would break the app on their own, but together they make the code feel less polished and create extra noise during review because developers have to filter out warnings that should not be there in the first place.
+    - **Fix:** Cleaned up the unused imports/variables, removed the debug logging from `constants/api.ts`, fixed the hook dependency warning and JSX text escaping issues, and removed the unnecessary ESLint suppression. As verification, I ran `npm run lint` and got a clean pass afterward. This does not replace real frontend UI tests, but it does improve automated static verification and makes remaining quality issues easier to notice.

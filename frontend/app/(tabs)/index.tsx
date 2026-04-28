@@ -50,7 +50,7 @@ export default function HomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [feed.length, user]);
 
   useFocusEffect(useCallback(() => { loadFeed(); }, [loadFeed]));
 
@@ -77,7 +77,7 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.heroHeading}>
-          {"what's\n"}
+          {'what&apos;s\n'}
           <Text style={styles.heroHeadingAccent}>cooking?</Text>
         </Text>
 
@@ -109,7 +109,7 @@ export default function HomeScreen() {
           </View>
         ) : !user ? (
           <View style={styles.centered}>
-            <Text style={styles.emptyText}>Log in to see your friends' posts.</Text>
+            <Text style={styles.emptyText}>Log in to see your friends&apos; posts.</Text>
           </View>
         ) : !hasFriends ? (
           <View style={styles.centered}>
@@ -117,7 +117,7 @@ export default function HomeScreen() {
           </View>
         ) : feed.length === 0 ? (
           <View style={styles.centered}>
-            <Text style={styles.emptyText}>Your friends haven't posted any recipes yet.</Text>
+            <Text style={styles.emptyText}>Your friends haven&apos;t posted any recipes yet.</Text>
           </View>
         ) : (
           feed.map((item, index) => (
