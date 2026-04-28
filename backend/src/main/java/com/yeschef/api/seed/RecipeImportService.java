@@ -1,6 +1,7 @@
 package com.yeschef.api.seed;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,7 +62,8 @@ public class RecipeImportService {
     }
 
     public RecipeImportSummary importAllRecipes() {
-        List<RecipeRemoteFile> files = gitHubRecipeClient.discoverRecipeFiles();
+        List<RecipeRemoteFile> files = new ArrayList<>(gitHubRecipeClient.discoverRecipeFiles());
+        Collections.shuffle(files);
         int scanned = 0;
         int imported = 0;
         int duplicates = 0;
