@@ -25,6 +25,14 @@ public class RecipeImportService {
 
     private static final Logger log = LoggerFactory.getLogger(RecipeImportService.class);
 
+    // Matches "X minutes", "X hours", and "X to Y minutes/hours" in directions text.
+    // Group 1: optional range lower bound (ignored — we take the upper bound).
+    // Group 2: the value to use (upper bound of a range, or the single value).
+    // Group 3: the time unit (hours? or minutes?/mins?).
+    private static final Pattern TIME_PATTERN = Pattern.compile(
+            "(?:(\\d+)\\s+to\\s+)?(\\d+)\\s+(hours?|minutes?|mins?)",
+            Pattern.CASE_INSENSITIVE);
+
     private static final Pattern LEADING_QUANTITY_PATTERN = Pattern.compile(
             "^\\s*((?:\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d+(?:\\.\\d+)?)"
                     + "(?:\\s*(?:-|to)\\s*(?:\\d+/\\d+|\\d+(?:\\.\\d+)?))?"
@@ -125,7 +133,8 @@ public class RecipeImportService {
         Instruct instruct = new Instruct();
         instruct.setRecipe(recipe);
         instruct.setPrepTime(0);
-        instruct.setCookTime(0);
+        Integer extractedMinutes = extractTotalMinutes(directions);
+        instruct.setCookTime(extractedMinutes != null ? extractedMinutes : 0);
         instruct.setSteps(mapDirections(directions));
         recipe.setInstruction(instruct);
 
@@ -150,6 +159,19 @@ public class RecipeImportService {
             stepNumber++;
         }
         return steps;
+    }
+
+    private static Integer extractTotalMinutes(List<String> directions) {
+        int total = 0;
+        for (String step : directions) {
+            Matcher m = TIME_PATTERN.matcher(step);
+            while (m.find()) {
+                int value = Integer.parseInt(m.group(2));
+                String unit = m.group(3).toLowerCase();
+                total += unit.startsWith("hour") ? value * 60 : value;
+            }
+        }
+        return total > 0 ? total : null;
     }
 
     private ParsedIngredient parseIngredientLine(String line) {
