@@ -184,7 +184,7 @@ _For API endpoint details, see the controller source at [`backend/src/main/java/
 - [ ] Short-form cooking videos
 - [ ] Year-in-review "Wrapped" summary
 - [x] Comment on recipes
-- [ ] Notifications for friend requests and recipe likes
+- [x] Notifications for friend requests and recipe likes
 - [ ] One-line recipe summaries
 - [ ] Filter recipes by cuisine type and allergens
 
