@@ -1,5 +1,5 @@
 import { authUrl } from '@/constants/api';
-import { authHeaders } from '@/lib/api/client';
+import { authHeaders, handleResponse } from '@/lib/api/client';
 
 export interface AuthRequest {
   email: string;
@@ -19,22 +19,6 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const text = await res.text();
-    let message = text;
-    try {
-      const json = JSON.parse(text);
-      if (typeof json.message === 'string') {
-        message = json.message;
-      } else if (typeof json.error === 'string') {
-        message = json.error;
-      }
-    } catch { /* not JSON — use raw text */ }
-    throw new Error(message || `Request failed with status ${res.status}`);
-  }
-  return res.json() as Promise<T>;
-}
 
 /** POST /auth/login */
 export async function login(email: string, password: string): Promise<AuthResponse> {
