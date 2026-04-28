@@ -77,7 +77,7 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.heroHeading}>
-          {'what&apos;s\n'}
+          {"what's\n"}
           <Text style={styles.heroHeadingAccent}>cooking?</Text>
         </Text>
 

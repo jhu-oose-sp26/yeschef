@@ -5,8 +5,21 @@
     - Detailed explanations of your improvements/refactorings
 
 ## Caroline
-- Description of the issue/inefficiency **File names in bold**
-    - Detailed explanations of your improvements/refactorings
+
+### 1. `toNotificationItem` reconstructed the same five fields in every switch case 
+- **Files affected:** `app/(tabs)/notifications.tsx`
+- `toNotificationItem` converted a raw API `NotificationResponse` into a `NotificationItem` using a switch on `notification.type`. All five cases (`COMMENT`, `RATING`, `FRIEND_REQUEST`, `SAVED`, `LIKED`) returned a full object literal where all five fields (`id`, `kind`, `actor`, `timeLabel`, and `isNew`) were identical and explicitly written out. Only three fields actually were different between cases: `message`, `highlight`, and `recipeId`. If any shared field were to be changed, like adjusting how `timeLabel` is computed, required editing five identical lines instead of one, making errors easy to miss and the logic hard to read.
+    - **Fix:** Extracted the five identical fields into a `base` object before the switch, and also moved `notification.referenceTitle ?? ''` into a `title` variable since four of the five cases use it. Each switch case now uses `base` and only specifies the three fields that are unique to that notification type. The function shrank from 55 lines to 22 while being exactly the same functionally.
+
+### 2. Back button label in filter results was a dead ternary
+- **Files affected:** `app/(tabs)/search/filter-results.tsx`
+- The back button label was written as an if/else statement that checked whether the user had searched by time or ingredient, but both branches returned the same text `'< SEARCH'`, so the check never actually did anything. Beyond being redundant code, it was hiding a real usability issue, where the filter results screen is reached from two different places (the time filter picker and the ingredient filter picker). Showing `< SEARCH` in both cases is misleading, since pressing back from a time-filtered result takes the user to the time picker, not the main search screen.
+    - **Fix:** Updated the two branches to return `'< TIME'` and `'< INGREDIENT'` respectively, so the label always reflects the screen the user came from. This is consistent with how the text search results screen labels its own back button `'< SEARCH'` to indicate it returns to the search hub.
+
+### 3. Log out button goes immediately with no confirmation
+- **Files affected:** `app/(tabs)/profile/index.tsx`
+- The profile screen had a three-dot icon button in the top-right corner of the hero section. Pressing it called `logout` directly with no warning of any kind. This creates two problems. First, the icon signals "more options", so a user tapping it to find settings or a menu would be logged out immediately without expecting it. Second, logging out is a destructive action as it clears the session and all stored credentials and such actions should always give users a chance to cancel before they take effect. There was no other place in the UI to log out, making accidental logouts especially disruptive since the user would have to re-enter their credentials.
+    - **Fix:** Added a `showLogoutConfirm` state and replaced the immediate `logout()` call with `setShowLogoutConfirm(true)`. A `Modal` now renders over the screen when that state is true, showing a card with a Cancel button and a red Log out button. The actual `logout()` is only triggered when the user explicitly confirms to Log out. Added `Modal` to the React Native import and added the corresponding styles to the stylesheet.
 
 ## Joey
 - Description of the issue/inefficiency **File names in bold**
