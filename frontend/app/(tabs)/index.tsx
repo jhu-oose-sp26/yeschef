@@ -8,10 +8,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import PostCard from '@/components/PostCard';
 import { getFriendsFeed } from '@/lib/api/posts';
 import type { FeedPost } from '@/lib/api/posts';
 import { getFriends } from '@/lib/api/users';
@@ -22,8 +22,6 @@ const DARK = Colors.dark;
 const GREEN = Colors.green;
 const TAN = Colors.tan;
 const RED = Colors.red;
-const TEAL = Colors.teal;
-const CREAM = Colors.cream;
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -127,43 +125,15 @@ export default function HomeScreen() {
           feedRows.map((row) => (
             <View key={row[0].postId} style={styles.cardRow}>
               {row.map((item) => (
-                <Pressable
+                <PostCard
                   key={item.postId}
-                  style={({ pressed }) => [styles.card, styles.cardHalf, { opacity: pressed ? 0.92 : 1 }]}
+                  item={item}
+                  style={styles.cardHalf}
                   onPress={() => router.navigate({
                     pathname: '/(tabs)/posts/[id]',
                     params: { id: String(item.postId) },
                   })}
-                >
-                  <View style={styles.cardInner}>
-                    <View style={styles.cardText}>
-                      <Text style={styles.cardTitle} numberOfLines={2}>{item.recipe.title}</Text>
-                      {item.recipe.creatorUsername ? (
-                        <Text style={styles.cardUsername}>@{item.recipe.creatorUsername}</Text>
-                      ) : null}
-                      <View style={styles.pillRow}>
-                        {item.recipe.instruction?.prepTime != null && (
-                          <View style={styles.prepPill}>
-                            <Text style={styles.prepPillText}>{item.recipe.instruction.prepTime}m prep</Text>
-                          </View>
-                        )}
-                        {item.recipe.instruction?.cookTime != null && (
-                          <View style={styles.cookPill}>
-                            <Text style={styles.cookPillText}>{item.recipe.instruction.cookTime}m cook</Text>
-                          </View>
-                        )}
-                      </View>
-                      {item.notes ? (
-                        <Text style={styles.cardNotes} numberOfLines={2}>{item.notes}</Text>
-                      ) : null}
-                    </View>
-                    <Image
-                      source={item.image ? { uri: item.image } : require('@/assets/images/default-post.png')}
-                      style={styles.cardImage}
-                      contentFit="cover"
-                    />
-                  </View>
-                </Pressable>
+                />
               ))}
               {row.length === 1 && <View style={styles.cardHalf} />}
             </View>
@@ -209,22 +179,7 @@ const styles = StyleSheet.create({
   },
   allBtnText: { fontSize: 12, fontWeight: '800', color: DARK, letterSpacing: 0.8 },
   cardRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  card: { backgroundColor: CREAM, borderRadius: 16, padding: 16, overflow: 'hidden' },
   cardHalf: { flex: 1 },
-  cardInner: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
-  cardText: { flex: 1 },
-  cardImage: { width: 72, height: 72, borderRadius: 10, flexShrink: 0 },
-  cardTitle: { fontSize: 17, fontWeight: '800', color: DARK, marginBottom: 4 },
-  cardUsername: { fontSize: 13, fontWeight: '600', color: GREEN, marginBottom: 8 },
-  pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 10 },
-  prepPill: { backgroundColor: '#D0F0EE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  prepPillText: { color: TEAL, fontSize: 12, fontWeight: '700' },
-  cookPill: {
-    backgroundColor: TAN, paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(188,65,43,0.2)',
-  },
-  cookPillText: { color: RED, fontSize: 12, fontWeight: '700' },
-  cardNotes: { fontSize: 13, color: DARK, opacity: 0.7, lineHeight: 19 },
   centered: { paddingVertical: 48, alignItems: 'center' },
   emptyText: { fontSize: 15, color: DARK, opacity: 0.5, textAlign: 'center', maxWidth: 280 },
   errorText: { fontSize: 15, color: RED, fontWeight: '700', marginBottom: 12 },
