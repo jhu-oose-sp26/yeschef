@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
+import PostCard from '@/components/PostCard';
 import { getUserPosts } from '@/lib/api/posts';
 import type { FeedPost } from '@/lib/api/posts';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -64,47 +65,22 @@ export default function MyPostsScreen() {
               <Text style={styles.sectionLabel}>
                 {posts.length} POST{posts.length === 1 ? '' : 'S'}
               </Text>
-              {posts.map((item) => {
-                const prep = item.recipe.instruction?.prepTime;
-                const cook = item.recipe.instruction?.cookTime;
-                return (
-                  <Pressable
-                    key={item.postId}
-                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                    onPress={() => router.push({ pathname: '/posts/[id]', params: { id: String(item.postId) } })}>
-                    <View style={styles.cardTopAccent} />
-                    <View style={styles.cardMain}>
-                      <View style={styles.cardTextWrap}>
-                        <Text style={styles.cardTitle} numberOfLines={2}>
-                          {item.recipe.title}
-                        </Text>
-                        <Text style={styles.cardHandle}>@{authUser?.username ?? 'you'}</Text>
-                        <View style={styles.pillRow}>
-                          {prep != null && (
-                            <View style={[styles.timePill, styles.prepPill]}>
-                              <Text style={styles.prepPillText}>{prep}m prep</Text>
-                            </View>
-                          )}
-                          {cook != null && (
-                            <View style={[styles.timePill, styles.cookPill]}>
-                              <Text style={styles.cookPillText}>{cook}m cook</Text>
-                            </View>
-                          )}
-                        </View>
-                        {item.notes ? (
-                          <Text style={styles.cardExcerpt} numberOfLines={2}>{item.notes}</Text>
-                        ) : null}
-                      </View>
-                    </View>
-                    <View style={styles.cardFooter}>
-                      <Text style={styles.footerText}>tap to view post</Text>
-                      <View style={styles.arrowCircle}>
-                        <MaterialIcons name="chevron-right" size={22} color={Colors.cream} />
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {posts.reduce<FeedPost[][]>((rows, post, i) => {
+                if (i % 2 === 0) rows.push([post]); else rows[rows.length - 1].push(post);
+                return rows;
+              }, []).map((row) => (
+                <View key={row[0].postId} style={styles.cardRow}>
+                  {row.map((item) => (
+                    <PostCard
+                      key={item.postId}
+                      item={item}
+                      style={styles.cardHalf}
+                      onPress={() => router.push({ pathname: '/posts/[id]', params: { id: String(item.postId) } })}
+                    />
+                  ))}
+                  {row.length === 1 && <View style={styles.cardHalf} />}
+                </View>
+              ))}
             </ScrollView>
           )}
         </LoadingErrorView>
@@ -171,95 +147,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 6,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: 'rgba(26,18,8,0.08)',
-    overflow: 'hidden',
-    marginBottom: 14,
-  },
-  cardTopAccent: {
-    height: 6,
-    backgroundColor: Colors.green,
-  },
-  cardMain: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 12,
-  },
-  cardTextWrap: {
-    flex: 1,
-  },
-  cardTitle: {
-    color: Colors.dark,
-    fontFamily: 'Fraunces_700Bold_Italic',
-    fontSize: 18,
-    lineHeight: 24,
-    marginBottom: 4,
-  },
-  cardHandle: {
-    color: Colors.teal,
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  timePill: {
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-  },
-  prepPill: {
-    backgroundColor: '#FFF0E8',
-  },
-  prepPillText: {
-    color: Colors.red,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  cookPill: {
-    backgroundColor: '#D8F0EF',
-  },
-  cookPillText: {
-    color: Colors.teal,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  cardExcerpt: {
-    color: 'rgba(26,18,8,0.82)',
-    fontSize: 15,
-    lineHeight: 24,
-  },
-  cardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(26,18,8,0.08)',
-    paddingLeft: 18,
-    paddingRight: 14,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  footerText: {
-    flex: 1,
-    color: 'rgba(26,18,8,0.5)',
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  arrowCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: Colors.dark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 10,
-  },
+  cardRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  cardHalf: { flex: 1, borderWidth: 1.5, borderColor: 'rgba(26,18,8,0.12)', borderRadius: 16 },
   centered: {
     flex: 1,
     alignItems: 'center',

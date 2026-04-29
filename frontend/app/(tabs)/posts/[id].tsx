@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -41,6 +42,7 @@ export default function PostDetailScreen() {
   const { user: authUser, token } = useAuth();
   const postId = Number(id);
 
+  const { height: screenHeight } = useWindowDimensions();
   const [post, setPost] = useState<PostResponse | null>(null);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [ratings, setRatings] = useState<RatingResponse[]>([]);
@@ -172,13 +174,47 @@ export default function PostDetailScreen() {
 
       <View style={styles.body}>
 
-        {/* Photo */}
-        {post.image ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>PHOTOS</Text>
-            <Image source={{ uri: post.image }} style={styles.postImage} contentFit="cover" />
+        {/* Two-column row: linked recipe (left) + photo (right) */}
+        <View style={[styles.twoColRow, { height: screenHeight * 0.32 }]}>
+          <View style={styles.leftCol}>
+            <Text style={styles.sectionLabel}>LINKED RECIPE</Text>
+            <Pressable
+              style={({ pressed }) => [styles.linkedRecipeCard, { opacity: pressed ? 0.9 : 1, flex: 1 }]}
+              onPress={() => router.navigate({
+                pathname: '/(tabs)/recipes/[id]',
+                params: { id: String(post.recipe.id) },
+              })}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.linkedRecipeLabel}>VIEW FULL RECIPE</Text>
+                <Text style={styles.linkedRecipeTitle}>{post.recipe.title}</Text>
+                <View style={styles.pillRow}>
+                  {post.recipe.prepTime > 0 && (
+                    <View style={styles.linkedPrepPill}>
+                      <Text style={styles.linkedPrepPillText}>{post.recipe.prepTime}m prep</Text>
+                    </View>
+                  )}
+                  {post.recipe.cookTime > 0 && (
+                    <View style={styles.linkedCookPill}>
+                      <Text style={styles.linkedCookPillText}>{post.recipe.cookTime}m cook</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <View style={styles.linkedChevron}>
+                <IconSymbol name="chevron.right" size={16} color="#fff" />
+              </View>
+            </Pressable>
           </View>
-        ) : null}
+
+          <View style={styles.rightCol}>
+            <Image
+              source={post.image ? { uri: post.image } : require('@/assets/images/default-post.png')}
+              style={styles.postImage}
+              contentFit="contain"
+            />
+          </View>
+        </View>
 
         {/* Notes */}
         {post.notes ? (
@@ -191,38 +227,6 @@ export default function PostDetailScreen() {
             </View>
           </View>
         ) : null}
-
-        {/* Linked recipe */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>LINKED RECIPE</Text>
-          <Pressable
-            style={({ pressed }) => [styles.linkedRecipeCard, { opacity: pressed ? 0.9 : 1 }]}
-            onPress={() => router.navigate({
-              pathname: '/(tabs)/recipes/[id]',
-              params: { id: String(post.recipe.id) },
-            })}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.linkedRecipeLabel}>VIEW FULL RECIPE</Text>
-              <Text style={styles.linkedRecipeTitle}>{post.recipe.title}</Text>
-              <View style={styles.pillRow}>
-                {post.recipe.prepTime > 0 && (
-                  <View style={styles.linkedPrepPill}>
-                    <Text style={styles.linkedPrepPillText}>{post.recipe.prepTime}m prep</Text>
-                  </View>
-                )}
-                {post.recipe.cookTime > 0 && (
-                  <View style={styles.linkedCookPill}>
-                    <Text style={styles.linkedCookPillText}>{post.recipe.cookTime}m cook</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            <View style={styles.linkedChevron}>
-              <IconSymbol name="chevron.right" size={16} color="#fff" />
-            </View>
-          </Pressable>
-        </View>
 
         {/* Ratings */}
         <View style={styles.section}>
@@ -359,8 +363,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4, marginBottom: 12,
   },
 
+  // Two-column row
+  twoColRow: { flexDirection: 'row', gap: 12, marginBottom: 28 },
+  leftCol: { flex: 1, flexDirection: 'column' },
+  rightCol: { flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(26,18,8,0.04)' },
+
   // Photo
-  postImage: { width: '100%', height: 220, borderRadius: 14 },
+  postImage: { width: '100%', height: '100%' },
 
   // Notes
   notesCard: {

@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import PostCard from '@/components/PostCard';
 import { LoadingErrorView } from '@/components/ui/LoadingErrorView';
 import { Colors } from '@/constants/colors';
+import type { FeedPost } from '@/lib/api/posts';
 import { getRecipe } from '@/lib/api/recipes';
 import type { Recipe } from '@/lib/api/recipes';
 import { getSavedRecipes } from '@/lib/api/users';
@@ -101,59 +103,28 @@ export default function MySavedScreen() {
                 {recipes.length} SAVED RECIPE{recipes.length === 1 ? '' : 'S'}
               </Text>
 
-              {recipes.map((recipe, index) => {
-                const prep = recipe.instruction?.prepTime;
-                const cook = recipe.instruction?.cookTime;
-                const creator = recipe.creatorUsername ? `@${recipe.creatorUsername}` : null;
-                return (
-                  <Pressable
-                    key={recipe.id}
-                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/recipes/[id]',
-                        params: {
-                          id: String(recipe.id),
-                          from: 'my-saved',
-                          userId,
-                          username: username ?? '',
-                        },
-                      })
-                    }>
-                    <View style={styles.rankWrap}>
-                      <Text style={styles.rankText}>{String(index + 1).padStart(2, '0')}</Text>
-                    </View>
-
-                    <View style={styles.cardContent}>
-                      <Text style={styles.cardTitle} numberOfLines={2}>
-                        {recipe.title}
-                      </Text>
-                      <Text style={styles.cardMeta}>
-                        {recipe.ingredients?.length ?? 0} ingredient
-                        {(recipe.ingredients?.length ?? 0) === 1 ? '' : 's'}
-                        {creator ? ` · ${creator}` : ''}
-                      </Text>
-
-                      <View style={styles.pillRow}>
-                        {prep != null ? (
-                          <View style={[styles.timePill, styles.prepPill]}>
-                            <Text style={styles.prepPillText}>{prep}m prep</Text>
-                          </View>
-                        ) : null}
-                        {cook != null ? (
-                          <View style={[styles.timePill, styles.cookPill]}>
-                            <Text style={styles.cookPillText}>{cook}m cook</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-
-                    <View style={styles.arrowCircle}>
-                      <MaterialIcons name="chevron-right" size={22} color={Colors.sand} />
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {recipes.reduce<Recipe[][]>((rows, r, i) => {
+                if (i % 2 === 0) rows.push([r]); else rows[rows.length - 1].push(r);
+                return rows;
+              }, []).map((row) => (
+                <View key={row[0].id} style={styles.cardRow}>
+                  {row.map((recipe) => {
+                    const feedPost: FeedPost = { postId: recipe.id, image: null, notes: null, recipe };
+                    return (
+                      <PostCard
+                        key={recipe.id}
+                        item={feedPost}
+                        style={styles.cardHalf}
+                        onPress={() => router.push({
+                          pathname: '/recipes/[id]',
+                          params: { id: String(recipe.id), from: 'my-saved', userId, username: username ?? '' },
+                        })}
+                      />
+                    );
+                  })}
+                  {row.length === 1 && <View style={styles.cardHalf} />}
+                </View>
+              ))}
             </ScrollView>
           )}
         </LoadingErrorView>
@@ -220,79 +191,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 6,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(26,18,8,0.08)',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rankWrap: {
-    width: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  rankText: {
-    color: '#E0D6C9',
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  cardContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  cardTitle: {
-    color: Colors.dark,
-    fontFamily: 'Fraunces_700Bold_Italic',
-    fontSize: 18,
-    lineHeight: 24,
-    marginBottom: 4,
-  },
-  cardMeta: {
-    color: 'rgba(26,18,8,0.58)',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  timePill: {
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-  },
-  prepPill: {
-    backgroundColor: '#FFF0E8',
-  },
-  prepPillText: {
-    color: Colors.red,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  cookPill: {
-    backgroundColor: '#D8F0EF',
-  },
-  cookPillText: {
-    color: Colors.teal,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  arrowCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.dark,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  cardRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  cardHalf: { flex: 1 },
   centered: {
     flex: 1,
     alignItems: 'center',
