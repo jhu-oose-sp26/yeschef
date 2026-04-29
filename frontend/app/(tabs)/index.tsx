@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -55,6 +56,9 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => { loadFeed(); }, [loadFeed]));
 
   const initial = user?.username?.[0]?.toUpperCase() ?? '?';
+
+  const feedRows: FeedPost[][] = [];
+  for (let i = 0; i < feed.length; i += 2) feedRows.push(feed.slice(i, i + 2));
 
   return (
     <ScrollView
@@ -120,49 +124,48 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>Your friends haven&apos;t posted any recipes yet.</Text>
           </View>
         ) : (
-          feed.map((item, index) => (
-            <View key={item.postId}>
-              {index > 0 && <View style={styles.cardDivider} />}
-              <Pressable
-                style={({ pressed }) => [styles.card, { opacity: pressed ? 0.92 : 1 }]}
-                onPress={() => router.navigate({
-                  pathname: '/(tabs)/posts/[id]',
-                  params: { id: String(item.postId) },
-                })}
-              >
-                <View style={styles.cardTop}>
-                  <View style={styles.cardMain}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>{item.recipe.title}</Text>
-                    {item.recipe.creatorUsername ? (
-                      <Text style={styles.cardUsername}>@{item.recipe.creatorUsername}</Text>
-                    ) : null}
-                    <View style={styles.pillRow}>
-                      {item.recipe.instruction?.prepTime != null && (
-                        <View style={styles.prepPill}>
-                          <Text style={styles.prepPillText}>{item.recipe.instruction.prepTime}m prep</Text>
-                        </View>
-                      )}
-                      {item.recipe.instruction?.cookTime != null && (
-                        <View style={styles.cookPill}>
-                          <Text style={styles.cookPillText}>{item.recipe.instruction.cookTime}m cook</Text>
-                        </View>
-                      )}
+          feedRows.map((row) => (
+            <View key={row[0].postId} style={styles.cardRow}>
+              {row.map((item) => (
+                <Pressable
+                  key={item.postId}
+                  style={({ pressed }) => [styles.card, styles.cardHalf, { opacity: pressed ? 0.92 : 1 }]}
+                  onPress={() => router.navigate({
+                    pathname: '/(tabs)/posts/[id]',
+                    params: { id: String(item.postId) },
+                  })}
+                >
+                  <View style={styles.cardInner}>
+                    <View style={styles.cardText}>
+                      <Text style={styles.cardTitle} numberOfLines={2}>{item.recipe.title}</Text>
+                      {item.recipe.creatorUsername ? (
+                        <Text style={styles.cardUsername}>@{item.recipe.creatorUsername}</Text>
+                      ) : null}
+                      <View style={styles.pillRow}>
+                        {item.recipe.instruction?.prepTime != null && (
+                          <View style={styles.prepPill}>
+                            <Text style={styles.prepPillText}>{item.recipe.instruction.prepTime}m prep</Text>
+                          </View>
+                        )}
+                        {item.recipe.instruction?.cookTime != null && (
+                          <View style={styles.cookPill}>
+                            <Text style={styles.cookPillText}>{item.recipe.instruction.cookTime}m cook</Text>
+                          </View>
+                        )}
+                      </View>
+                      {item.notes ? (
+                        <Text style={styles.cardNotes} numberOfLines={2}>{item.notes}</Text>
+                      ) : null}
                     </View>
-                    {item.notes ? (
-                      <Text style={styles.cardNotes} numberOfLines={2}>{item.notes}</Text>
-                    ) : null}
+                    <Image
+                      source={item.image ? { uri: item.image } : require('@/assets/images/default-post.png')}
+                      style={styles.cardImage}
+                      contentFit="cover"
+                    />
                   </View>
-                  <Pressable
-                    style={styles.chevronBtn}
-                    onPress={() => router.navigate({
-                      pathname: '/(tabs)/posts/[id]',
-                      params: { id: String(item.postId) },
-                    })}
-                  >
-                    <IconSymbol name="chevron.right" size={16} color="#fff" />
-                  </Pressable>
-                </View>
-              </Pressable>
+                </Pressable>
+              ))}
+              {row.length === 1 && <View style={styles.cardHalf} />}
             </View>
           ))
         )}
@@ -205,10 +208,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 5,
   },
   allBtnText: { fontSize: 12, fontWeight: '800', color: DARK, letterSpacing: 0.8 },
-  cardDivider: { height: 2, backgroundColor: GREEN, borderRadius: 1, marginVertical: 2 },
-  card: { backgroundColor: CREAM, borderRadius: 16, padding: 16 },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  cardMain: { flex: 1 },
+  cardRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  card: { backgroundColor: CREAM, borderRadius: 16, padding: 16, overflow: 'hidden' },
+  cardHalf: { flex: 1 },
+  cardInner: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
+  cardText: { flex: 1 },
+  cardImage: { width: 72, height: 72, borderRadius: 10, flexShrink: 0 },
   cardTitle: { fontSize: 17, fontWeight: '800', color: DARK, marginBottom: 4 },
   cardUsername: { fontSize: 13, fontWeight: '600', color: GREEN, marginBottom: 8 },
   pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 10 },
@@ -220,10 +225,6 @@ const styles = StyleSheet.create({
   },
   cookPillText: { color: RED, fontSize: 12, fontWeight: '700' },
   cardNotes: { fontSize: 13, color: DARK, opacity: 0.7, lineHeight: 19 },
-  chevronBtn: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: DARK,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
-  },
   centered: { paddingVertical: 48, alignItems: 'center' },
   emptyText: { fontSize: 15, color: DARK, opacity: 0.5, textAlign: 'center', maxWidth: 280 },
   errorText: { fontSize: 15, color: RED, fontWeight: '700', marginBottom: 12 },
