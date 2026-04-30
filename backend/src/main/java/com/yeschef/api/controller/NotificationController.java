@@ -92,6 +92,7 @@ public class NotificationController {
 
         return new NotificationResponseDTO(
             notification.getId(),
+            notification.getActor().getId(),
             notification.getActor().getUsername(),
             notification.getType().name(),
             notification.getReferenceId(),
