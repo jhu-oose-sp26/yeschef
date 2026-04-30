@@ -16,6 +16,7 @@ import {
   type NotificationResponse,
   type NotificationType,
 } from '@/lib/api/notifications';
+import { getPostByRecipeId } from '@/lib/api/posts';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 const DARK = '#1A1208';
@@ -30,10 +31,13 @@ type NotificationItem = {
   id: string;
   kind: NotificationKind;
   actor: string;
+  actorId: number;
+  actorUsername: string;
   message: string;
   highlight: string;
   timeLabel: string;
   isNew: boolean;
+  postId: number | null;
   recipeId: number | null;
 };
 
@@ -117,6 +121,8 @@ function toNotificationItem(notification: NotificationResponse): NotificationIte
     id: String(notification.id),
     kind: mapNotificationType(notification.type),
     actor: `@${notification.actorUsername}`,
+    actorId: notification.actorId,
+    actorUsername: notification.actorUsername,
     timeLabel: formatTimeLabel(notification.createdAt),
     isNew: !notification.isRead,
   };
@@ -124,15 +130,15 @@ function toNotificationItem(notification: NotificationResponse): NotificationIte
 
   switch (notification.type) {
     case 'COMMENT':
-      return { ...base, message: 'commented on your post', highlight: title, recipeId: notification.recipeId };
+      return { ...base, message: 'commented on your post', highlight: title, postId: notification.referenceId, recipeId: null };
     case 'RATING':
-      return { ...base, message: 'rated your recipe', highlight: title, recipeId: notification.recipeId };
+      return { ...base, message: 'rated your recipe', highlight: title, postId: null, recipeId: notification.recipeId };
     case 'FRIEND_REQUEST':
-      return { ...base, message: 'added you as a friend', highlight: '', recipeId: null };
+      return { ...base, message: 'added you as a friend', highlight: '', postId: null, recipeId: null };
     case 'SAVED':
-      return { ...base, message: 'saved your recipe', highlight: title, recipeId: notification.recipeId };
+      return { ...base, message: 'saved your recipe', highlight: title, postId: null, recipeId: notification.recipeId };
     case 'LIKED':
-      return { ...base, message: 'liked your recipe', highlight: title, recipeId: notification.recipeId };
+      return { ...base, message: 'liked your recipe', highlight: title, postId: null, recipeId: notification.recipeId };
   }
 }
 
@@ -284,15 +290,19 @@ function NotificationCard({ notification }: { notification: NotificationItem }) 
   return (
     <Pressable
       style={({ pressed }) => [styles.card, { borderLeftColor: meta.accent }, pressed && styles.pressed]}
-      onPress={() => {
-        if (notification.recipeId != null) {
+      onPress={async () => {
+        if (notification.kind === 'friend' && notification.actorId != null) {
           router.push({
-            pathname: '/recipes/[id]',
-            params: {
-              id: String(notification.recipeId),
-              from: 'notifications',
-            },
+            pathname: '/(tabs)/profile/user-profile',
+            params: { userId: String(notification.actorId), username: notification.actorUsername },
           });
+        } else if (notification.postId != null) {
+          router.push({ pathname: '/posts/[id]', params: { id: String(notification.postId) } });
+        } else if (notification.recipeId != null) {
+          const post = await getPostByRecipeId(notification.recipeId);
+          if (post != null) {
+            router.push({ pathname: '/posts/[id]', params: { id: String(post.id) } });
+          }
         }
       }}
     >

@@ -5,6 +5,7 @@ export type NotificationType = 'COMMENT' | 'RATING' | 'FRIEND_REQUEST' | 'LIKED'
 
 export interface NotificationResponse {
   id: number;
+  actorId: number;
   actorUsername: string;
   type: NotificationType;
   referenceId: number | null;
