@@ -142,7 +142,7 @@ export default function ProfileScreen() {
                   onPress={() =>
                     router.push({
                       pathname: '/(tabs)/posts/[id]',
-                      params: { id: String(item.postId) },
+                      params: { id: String(item.postId), from: 'profile' },
                     })
                   }>
                   <View style={styles.miniCardAccent} />

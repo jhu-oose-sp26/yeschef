@@ -56,9 +56,47 @@ function CreateTabButton({ onPress, accessibilityState }: BottomTabBarButtonProp
   );
 }
 
+function HomeTabButton(props: BottomTabBarButtonProps) {
+  const router = useRouter();
+  return (
+    <HapticTab
+      {...props}
+      onPress={(event) => {
+        props.onPress?.(event);
+        router.navigate('/(tabs)');
+      }}
+    />
+  );
+}
+
+function SearchTabButton(props: BottomTabBarButtonProps) {
+  const router = useRouter();
+  return (
+    <HapticTab
+      {...props}
+      onPress={(event) => {
+        props.onPress?.(event);
+        router.navigate('/search');
+      }}
+    />
+  );
+}
+
+function FriendsTabButton(props: BottomTabBarButtonProps) {
+  const router = useRouter();
+  return (
+    <HapticTab
+      {...props}
+      onPress={(event) => {
+        props.onPress?.(event);
+        router.navigate('/browse');
+      }}
+    />
+  );
+}
+
 function ProfileTabButton(props: BottomTabBarButtonProps) {
   const router = useRouter();
-
   return (
     <HapticTab
       {...props}
@@ -119,6 +157,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
+          tabBarButton: HomeTabButton,
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
         }}
       />
@@ -126,6 +165,7 @@ export default function TabLayout() {
         name="search"
         options={{
           title: 'Search',
+          tabBarButton: SearchTabButton,
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="magnifyingglass" color={color} />,
         }}
       />
@@ -141,6 +181,7 @@ export default function TabLayout() {
         name="browse"
         options={{
           title: 'Friends',
+          tabBarButton: FriendsTabButton,
           tabBarIcon: ({ color }) => <FriendsTabIcon color={color} />,
           tabBarLabel: ({ color, children }) => <FriendsTabLabel color={color}>{children}</FriendsTabLabel>,
         }}

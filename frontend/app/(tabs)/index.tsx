@@ -137,9 +137,9 @@ export default function HomeScreen() {
                   key={item.postId}
                   item={item}
                   style={styles.cardHalf}
-                  onPress={() => router.navigate({
+                  onPress={() => router.push({
                     pathname: '/(tabs)/posts/[id]',
-                    params: { id: String(item.postId) },
+                    params: { id: String(item.postId), from: 'home' },
                   })}
                 />
               ))}
