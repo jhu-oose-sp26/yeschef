@@ -104,9 +104,6 @@ export default function HomeScreen() {
       <View style={styles.feedSection}>
         <View style={styles.feedHeader}>
           <Text style={styles.feedTitle}>fresh posts</Text>
-          <View style={styles.allBtn}>
-            <Text style={styles.allBtnText}>ALL</Text>
-          </View>
         </View>
 
         {loading && !refreshing ? (
@@ -184,11 +181,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', marginBottom: 20,
   },
   feedTitle: { fontFamily: 'Fraunces_700Bold_Italic', fontSize: 22, color: DARK },
-  allBtn: {
-    borderWidth: 1.5, borderColor: DARK, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 5,
-  },
-  allBtnText: { fontSize: 12, fontWeight: '800', color: DARK, letterSpacing: 0.8 },
   cardRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   cardHalf: { flex: 1 },
   centered: { paddingVertical: 48, alignItems: 'center' },
