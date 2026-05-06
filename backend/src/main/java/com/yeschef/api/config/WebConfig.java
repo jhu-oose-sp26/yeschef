@@ -17,7 +17,7 @@ public class WebConfig {
         config.setAllowCredentials(true);
         // allowedOriginPatterns supports wildcards and works with credentials
         config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*", "https://yeschef-sigma.vercel.app", "https://*.vercel.app", "https://www.yaschef.com"));        
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
