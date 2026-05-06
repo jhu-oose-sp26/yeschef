@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -42,6 +43,7 @@ export default function SearchTimeScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [trackWidth, setTrackWidth] = useState(0);
+  const trackWidthRef = useRef(0);
 
   useEffect(() => {
     setMaxTime(initialTime);
@@ -65,13 +67,29 @@ export default function SearchTimeScreen() {
       ? ((maxTime - MIN_TIME) / (MAX_TIME - MIN_TIME)) * trackWidth
       : 0;
 
-  const handleTrackPress = (locationX: number) => {
-    if (trackWidth <= 0) return;
-    const fraction = Math.max(0, Math.min(1, locationX / trackWidth));
-    const rawValue = MIN_TIME + fraction * (MAX_TIME - MIN_TIME);
-    const snapped = Math.round(rawValue / STEP) * STEP;
-    setMaxTime(clampTime(snapped));
-  };
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const tw = trackWidthRef.current;
+        const locationX = evt.nativeEvent.locationX;
+        if (tw <= 0 || !isFinite(locationX)) return;
+        const fraction = Math.max(0, Math.min(1, locationX / tw));
+        const snapped = Math.round((MIN_TIME + fraction * (MAX_TIME - MIN_TIME)) / STEP) * STEP;
+        setMaxTime(clampTime(snapped));
+      },
+      onPanResponderMove: (evt) => {
+        const tw = trackWidthRef.current;
+        const locationX = evt.nativeEvent.locationX;
+        if (tw <= 0 || !isFinite(locationX)) return;
+        const fraction = Math.max(0, Math.min(1, locationX / tw));
+        const snapped = Math.round((MIN_TIME + fraction * (MAX_TIME - MIN_TIME)) / STEP) * STEP;
+        setMaxTime(clampTime(snapped));
+      },
+      onPanResponderTerminationRequest: () => false,
+    }),
+  ).current;
 
   return (
     <View style={styles.screen}>
@@ -83,21 +101,25 @@ export default function SearchTimeScreen() {
         <Text style={styles.headerTitle}>cook time</Text>
       </View>
 
-      <View style={styles.sheet}>
+      <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">
         <View style={styles.sliderCard}>
           <Text style={styles.sliderPrompt}>HOW LONG DO YOU HAVE?</Text>
           <Text style={styles.sliderLabel}>MAX COOK TIME</Text>
           <Text style={styles.sliderValue}>{formatTime(maxTime)}</Text>
 
-          <Pressable
-            onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
-            onPress={(event) => handleTrackPress(event.nativeEvent.locationX)}
-            style={styles.trackPressable}
+          <View
+            onLayout={(event) => {
+              const w = event.nativeEvent.layout.width;
+              trackWidthRef.current = w;
+              setTrackWidth(w);
+            }}
+            style={[styles.trackPressable, { cursor: 'pointer' } as any]}
+            {...panResponder.panHandlers}
           >
             <View style={styles.trackBase} />
             <View style={[styles.trackFill, { width: fillWidth }]} />
             <View style={[styles.trackThumb, { left: Math.max(0, fillWidth - 11) }]} />
-          </Pressable>
+          </View>
 
           <View style={styles.trackLabels}>
             <Text style={styles.trackLabelText}>5 min</Text>
@@ -130,7 +152,7 @@ export default function SearchTimeScreen() {
             <ActivityIndicator size="small" color={RED} />
           </View>
         ) : (
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
+          <View style={styles.list}>
             {filteredRecipes.length === 0 ? (
               <Text style={styles.emptyText}>No recipes fit this cook time yet.</Text>
             ) : (
@@ -177,9 +199,9 @@ export default function SearchTimeScreen() {
                 </Pressable>
               ))
             )}
-          </ScrollView>
+          </View>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -227,8 +249,11 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
+  },
+  sheetContent: {
     paddingHorizontal: 18,
     paddingTop: 18,
+    paddingBottom: 48,
   },
   sliderCard: {
     backgroundColor: '#FFFFFF',
@@ -338,11 +363,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     alignItems: 'center',
   },
-  scroll: {
-    flex: 1,
-  },
   list: {
-    paddingBottom: 48,
     gap: 12,
   },
   emptyText: {
