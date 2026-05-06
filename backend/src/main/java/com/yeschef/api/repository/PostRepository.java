@@ -58,6 +58,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
         JOIN FETCH s.user
         JOIN FETCH r.instruction
         WHERE s.user IN (SELECT f.friend FROM Friendship f WHERE f.self.id = :userId)
+        ORDER BY p.createdAt DESC
         """)
     List<Post> findByFriendsOf(@Param("userId") Long userId);
 
