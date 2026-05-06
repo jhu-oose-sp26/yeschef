@@ -37,10 +37,28 @@ function avatarColor(userId: number) {
 }
 
 export default function PostDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from, userId: fromUserId, username: fromUsername } = useLocalSearchParams<{
+    id: string;
+    from?: string;
+    userId?: string;
+    username?: string;
+  }>();
   const router = useRouter();
   const { user: authUser, token } = useAuth();
   const postId = Number(id);
+
+  const handleBack = () => {
+    if (from === 'profile') router.navigate('/(tabs)/profile');
+    else if (from === 'my-posts') router.navigate({ pathname: '/(tabs)/profile/my-posts', params: { userId: fromUserId ?? '' } });
+    else if (from === 'user-posts') router.navigate({ pathname: '/profile/user-posts', params: { userId: fromUserId ?? '', username: fromUsername ?? '' } });
+    else if (router.canGoBack()) router.back();
+    else router.navigate('/(tabs)');
+  };
+
+  const backLabel = from === 'profile' ? '< PROFILE'
+    : from === 'my-posts' ? '< MY POSTS'
+    : from === 'user-posts' ? `< ${(fromUsername ?? 'user').toUpperCase()}'S POSTS`
+    : '< HOME';
 
   const { height: screenHeight } = useWindowDimensions();
   const [post, setPost] = useState<PostResponse | null>(null);
@@ -137,8 +155,8 @@ export default function PostDetailScreen() {
 
       {/* Header */}
       <View style={styles.hero}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>{'< HOME'}</Text>
+        <Pressable onPress={handleBack} style={styles.backBtn}>
+          <Text style={styles.backText}>{backLabel}</Text>
         </Pressable>
 
         {/* Author row */}
@@ -180,9 +198,14 @@ export default function PostDetailScreen() {
             <Text style={styles.sectionLabel}>LINKED RECIPE</Text>
             <Pressable
               style={({ pressed }) => [styles.linkedRecipeCard, { opacity: pressed ? 0.9 : 1, flex: 1 }]}
-              onPress={() => router.navigate({
+              onPress={() => router.push({
                 pathname: '/(tabs)/recipes/[id]',
-                params: { id: String(post.recipe.id) },
+                params: {
+                  id: String(post.recipe.id),
+                  from: from ?? 'home',
+                  userId: fromUserId ?? '',
+                  username: fromUsername ?? '',
+                },
               })}
             >
               <View style={{ flex: 1 }}>

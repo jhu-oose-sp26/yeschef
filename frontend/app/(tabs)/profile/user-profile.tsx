@@ -40,7 +40,7 @@ function getAvatarColor(username: string) {
 export default function UserProfileScreen() {
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const { userId, username } = useLocalSearchParams<{ userId: string; username?: string }>();
+  const { userId, username, from } = useLocalSearchParams<{ userId: string; username?: string; from?: string }>();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +89,8 @@ export default function UserProfileScreen() {
   }, [load]);
 
   const handleBack = () => {
-    if (router.canGoBack()) router.back();
+    if (from === 'find-friends') router.navigate('/browse');
+    else if (router.canGoBack()) router.back();
     else if (isOwnProfile) router.navigate('/(tabs)/profile');
     else router.navigate('/browse');
   };

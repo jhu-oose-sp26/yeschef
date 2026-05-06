@@ -155,7 +155,8 @@ export default function RecipeDetailScreen() {
   useFocusEffect(useCallback(() => { loadRecipe(); }, [loadRecipe]));
 
   const handleBack = () => {
-    if (from === 'create') router.navigate('/');
+    if (from === 'home') router.navigate('/(tabs)');
+    else if (from === 'create') router.navigate('/');
     else if (from === 'filter-results') {
       router.navigate({
         pathname: '/search/filter-results',

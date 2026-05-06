@@ -75,7 +75,7 @@ export default function MyPostsScreen() {
                       key={item.postId}
                       item={item}
                       style={styles.cardHalf}
-                      onPress={() => router.push({ pathname: '/posts/[id]', params: { id: String(item.postId) } })}
+                      onPress={() => router.push({ pathname: '/posts/[id]', params: { id: String(item.postId), from: 'my-posts' } })}
                     />
                   ))}
                   {row.length === 1 && <View style={styles.cardHalf} />}

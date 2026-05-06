@@ -103,7 +103,7 @@ export default function UserPostsScreen() {
                       key={post.postId}
                       item={post}
                       style={styles.cardHalf}
-                      onPress={() => router.push({ pathname: '/posts/[id]', params: { id: String(post.postId) } })}
+                      onPress={() => router.push({ pathname: '/posts/[id]', params: { id: String(post.postId), from: 'user-posts', userId, username } })}
                     />
                   ))}
                   {row.length === 1 && <View style={styles.cardHalf} />}
