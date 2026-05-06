@@ -14,6 +14,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import PostCard from '@/components/PostCard';
 import { getFriendsFeed } from '@/lib/api/posts';
 import type { FeedPost } from '@/lib/api/posts';
+import { getNotifications } from '@/lib/api/notifications';
 import { getFriends } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Colors } from '@/constants/colors';
@@ -31,18 +32,21 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadFeed = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
     if (isRefresh) setRefreshing(true); else if (feed.length === 0) setLoading(true);
     setError(null);
     try {
-      const [posts, friends] = await Promise.all([
+      const [posts, friends, notifications] = await Promise.all([
         getFriendsFeed(user.id),
         getFriends(user.id).catch(() => [] as string[]),
+        getNotifications(user.id).catch(() => []),
       ]);
       setHasFriends(friends.length > 0);
       setFeed(posts);
+      setUnreadCount(notifications.filter((n) => !n.isRead).length);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load feed.');
     } finally {
@@ -70,9 +74,16 @@ export default function HomeScreen() {
       <View style={styles.hero}>
         <View style={styles.topBar}>
           <View style={{ flex: 1 }} />
-          <Pressable style={styles.bellBtn} onPress={() => router.navigate('/(tabs)/notifications')}>
-            <IconSymbol name="bell.fill" size={20} color={GREEN} />
-          </Pressable>
+          <View>
+            <Pressable style={styles.bellBtn} onPress={() => router.navigate('/(tabs)/notifications')}>
+              <IconSymbol name="bell.fill" size={20} color={GREEN} />
+            </Pressable>
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
+          </View>
           <Pressable style={styles.avatar} onPress={() => router.navigate('/(tabs)/profile')}>
             <Text style={styles.avatarText}>{initial}</Text>
           </Pressable>
@@ -185,4 +196,19 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 15, color: RED, fontWeight: '700', marginBottom: 12 },
   retryBtn: { backgroundColor: RED, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 20 },
   retryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: RED,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: DARK,
+  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '900', lineHeight: 13 },
 });
