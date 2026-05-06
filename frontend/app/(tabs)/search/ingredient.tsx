@@ -70,7 +70,7 @@ export default function SearchIngredientScreen() {
         <Text style={styles.headerTitle}>ingredient</Text>
       </View>
 
-      <View style={styles.sheet}>
+      <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">
         <View style={styles.searchBar}>
           <IconSymbol name="magnifyingglass" size={16} color="rgba(26,18,8,0.36)" />
           <TextInput
@@ -112,7 +112,7 @@ export default function SearchIngredientScreen() {
           {query.trim().length > 0 ? 'MATCHING INGREDIENTS' : `${selectedLetter} INGREDIENTS`}
         </Text>
 
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
+        <View style={styles.list}>
           {filteredIngredients.length === 0 ? (
             <Text style={styles.emptyText}>No ingredients match your search.</Text>
           ) : (
@@ -136,8 +136,8 @@ export default function SearchIngredientScreen() {
               </Pressable>
             ))
           )}
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -185,8 +185,11 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
+  },
+  sheetContent: {
     paddingHorizontal: 18,
     paddingTop: 18,
+    paddingBottom: 48,
   },
   searchBar: {
     flexDirection: 'row',
@@ -243,11 +246,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 12,
   },
-  scroll: {
-    flex: 1,
-  },
   list: {
-    paddingBottom: 48,
     gap: 10,
   },
   card: {
