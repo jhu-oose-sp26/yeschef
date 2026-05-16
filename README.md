@@ -66,7 +66,17 @@ YesChef is a social recipe app that helps home cooks evaluate, organize, and sha
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Screenshots
 
+<img width="1100" alt="YesChef App Preview" src="https://github.com/user-attachments/assets/f14f0083-092b-40e1-b257-48ed585250d9" />
+
+<img width="1100" alt="YesChef Preview" src="https://github.com/user-attachments/assets/bf4f47dd-ecf0-48d8-93ac-412170c9c6a4" />
+
+<img width="1100" alt="YesChef Preview" src="https://github.com/user-attachments/assets/a13320bb-d7fd-48c5-9a19-b5808b4ea897" />
+
+<img width="1100" alt="YesChef Preview" src="https://github.com/user-attachments/assets/9f147a78-36b3-4b57-acd7-8c3f1d3ba6c7" />
+
+<img width="1100" alt="YesChef Preview" src="https://github.com/user-attachments/assets/6da4e857-7e7a-4b8b-9466-f2526f0ae3d9" />
 
 ### Built With
 
